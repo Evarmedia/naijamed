@@ -24,7 +24,7 @@ app.use("/api/users", userRoutes); // User routes
 
 // Test server response
 app.get("/", (req, res) => {
-  res.json({ message: "hello Okada-connect" });
+  res.json({ message: "hello NaijaMED Assisitant" });
 });
 
 // Test the database connection and sync models
