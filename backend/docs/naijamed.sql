@@ -43,7 +43,6 @@ CREATE TABLE patients (
     emergency_contact_name TEXT,
     emergency_contact_phone TEXT,
     emergency_contact_relationship TEXT,
-
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE ON UPDATE CASCADE
 );
 
@@ -71,20 +70,19 @@ CREATE TABLE symptoms (
     when_occurred DATE,
     severity TEXT CHECK(severity IN ('mild', 'moderate', 'severe')),
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    FOREIGN KEY (patient_id) REFERENCES patients(patient_id) ON DELETE CASCADE ON UPDATE CASCADE,
-)
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (patient_id) REFERENCES patients(patient_id) ON DELETE CASCADE ON UPDATE CASCADE
+);
 
 -- Messages with ai table
 CREATE TABLE messages (
     message_id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL,
     message TEXT NOT NULL,
-    identifier TEXT CHECK(indentifier IN ('agent', 'human')),
+    identifier TEXT CHECK(identifier IN ('agent', 'human')),
     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     is_read BOOLEAN DEFAULT FALSE,
-    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 

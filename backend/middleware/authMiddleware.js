@@ -28,4 +28,13 @@ const authMiddleware = (req, res, next) => {
   }
 };
 
-module.exports = authMiddleware;
+const authenticateUser = async (token) => {
+  try {
+    const decoded = jwt.verify(token, config.jwtSecret);
+    return decoded.user_id;
+  } catch (err) {
+    return null;
+  }
+};
+
+module.exports = { authMiddleware, authenticateUser};

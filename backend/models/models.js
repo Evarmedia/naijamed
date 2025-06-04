@@ -1,4 +1,5 @@
 const { User, Patients, Doctors  } = require("./userModel");
+const { Message } = require("./messagesModel")
 
 // User - Patients relationship
 Patients.belongsTo(User, {
@@ -12,8 +13,16 @@ Doctors.belongsTo(User, {
   as: 'user',
 });
 
+// User - Message relationship
+Message.belongsTo(User, {
+  foreignKey: 'user_id',
+  as: 'user',
+});
+
+
 module.exports = {
   User,
   Patients,
   Doctors,
+  Message,
 };

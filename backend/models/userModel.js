@@ -148,7 +148,7 @@ Patients.init(
       allowNull: true,
       defaultValue: null,
     },
-    emergency_contact: {
+    emergency_contact_name: {
       type: DataTypes.STRING,
       allowNull: true,
       defaultValue: null,
