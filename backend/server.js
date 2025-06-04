@@ -65,36 +65,19 @@ app.get("/", (req, res) => {
   }
 })();
 
-io.on("connection", async (socket) => {
+io.on("connection", (socket) => {
   console.log("Client connected");
 
-  // Authenticate user
-  const user_id = await authenticateUser(socket.handshake.auth.token);
-  console.log(`User authenticated with ID: ${user_id}`);
-
-  if (!user_id) {
-    socket.disconnect(true);
-    return;
-  }
   socket.on("message", async (message) => {
     try {
-      // Store user message in database
-      const userMessage = await Message.create({
-        message_id: `msg-${crypto.randomUUID()}`,
-        user_id: user_id,
-        message: message,
-        timestamp: new Date(),
-        identifier: "human",
-      });
-
       // Generate response using Groq SDK
       const chatCompletion = await groq.chat.completions.create({
         messages: [
           {
             role: "system",
             content: `Your name is Dr. Tayo, Act as a licensed medical professional providing guidance and support to patients.
-            Don't introduce yourself in every reponse just provide the response to the patient.
-            Keep your as brief as possible, and focus on providing helpful and accurate information.
+            Don't introduce yourself in every response just provide the response to the patient.
+            Keep your responses as brief as possible, and focus on providing helpful and accurate information.
             When a patient describes their symptoms or health concerns, assess the situation and provide a potential diagnosis and treatment plan. If the symptoms are severe or require immediate medical attention, recommend that the patient seek help from a doctor on the chat with doctor screen. Provide empathetic and supportive responses, and prioritize patient well-being and safety above all else." 
             You can also add some specific guidelines to the prompt, such as: 
             "Provide responses that are clear, concise, and easy to understand."
@@ -122,21 +105,12 @@ io.on("connection", async (socket) => {
 
       // Clean up response
       let formattedResponse = response.replace(/###/g, "\n\n**");
-      formattedResponse = formattedResponse.replace(/\*/g, "•");
+      formattedResponse = formattedResponse.replace(/\*/g, `<br>`);
       formattedResponse = formattedResponse.replace(/([.!?*])\s*/g, "$1\n");
       formattedResponse = formattedResponse.replace(/\n\n/g, "\n");
 
-      // Store AI response in database
-      await Message.create({
-        message_id: `msg-${crypto.randomUUID()}`,
-        user_id: user_id,
-        message: formattedResponse,
-        timestamp: new Date(),
-        identifier: "agent",
-      });
-
       // Send response back to user
-      socket.emit("response", response);
+      socket.emit("response", formattedResponse);
     } catch (error) {
       console.error(error);
       socket.emit("error", "Error processing message");
