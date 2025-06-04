@@ -19,9 +19,12 @@ const router = express.Router();
  *           schema:
  *             type: object
  *             properties:
- *               full_name:
+ *               first_name:
  *                 type: string
- *                 example: Nikon Packard
+ *                 example: "Nikon"
+ *               last_name:
+ *                 type: string
+ *                 example: "Packard"
  *               date_of_birth:
  *                 type: string
  *                 format: date
@@ -60,7 +63,9 @@ const router = express.Router();
  *                 patient:
  *                   type: object
  *                   properties:
- *                     full_name:
+ *                     first_name:
+ *                       type: string
+ *                     last_name :
  *                       type: string
  *                     email:
  *                       type: string
@@ -105,9 +110,12 @@ router.put('/patient/profile', authMiddleware, updatePatientProfile);
  *           schema:
  *             type: object
  *             properties:
- *               full_name:
+ *               first_name:
  *                 type: string
- *                 example: John Doe
+ *                 example: Nikon
+ *               last_name:
+ *                 type: string
+ *                 example: Lark
  *               date_of_birth:
  *                 type: string
  *                 format: date
@@ -150,12 +158,15 @@ router.put('/patient/profile', authMiddleware, updatePatientProfile);
  *                 doctor:
  *                   type: object
  *                   properties:
- *                     full_name:
+ *                     first_name:
  *                       type: string
- *                       example: "John Doe"
+ *                       example:  "Nikon"
+ *                     last_name:
+ *                       type: string
+ *                       example: "Lark"
  *                     email:
  *                       type: string
- *                       example: "johndoe@example.com"
+ *                       example: "nikonlark@example.com"
  *                     phone_number:
  *                       type: string
  *                       example: "+1234567890"

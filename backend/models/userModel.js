@@ -28,7 +28,11 @@ User.init(
       allowNull: false,
       unique: true,
     },
-    full_name: {
+    first_name: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    last_name: {
       type: DataTypes.STRING,
       allowNull: false,
     },
@@ -215,7 +219,7 @@ Doctors.init(
       type: DataTypes.STRING,
       allowNull: true,
       defaultValue: null,
-    }
+    },
   },
   {
     sequelize,

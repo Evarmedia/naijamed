@@ -10,12 +10,17 @@ const { Op } = require("sequelize");
 
 const config = require("../config/jwt");
 const redis = require("../utils/redis.js");
+const { error } = require("console");
 
 // Register a new user
 const register = async (req, res) => {
   try {
-    const { full_name, email, phone_number, password, confirm_password, role } =
+    const { first_name, last_name, email, phone_number, password, confirm_password, role } =
       req.body;
+
+    if (!first_name || !last_name || !email || !phone_number) {
+      return res.status(400).json({error: "All fields are required" })
+    }
 
     // Check if the user already exists
     const existingUserByEmail = await User.findOne({ where: { email } });
@@ -36,7 +41,8 @@ const register = async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
     // Create the user
     const newUser = await User.create({
-      full_name,
+      first_name,
+      last_name,
       email,
       phone_number,
       password: hashedPassword,
@@ -57,7 +63,7 @@ const register = async (req, res) => {
 
     return res.status(201).json({
       message:
-        "User registered successfully, check your email for verification",
+        "User registeration successfull, Update your profile",
       user: {
         user_id: newUser.user_id,
         full_name: newUser.full_name,

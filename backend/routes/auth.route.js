@@ -18,10 +18,14 @@ const router = express.Router();
  *           schema:
  *             type: object
  *             properties:
- *               full_name:
+ *               first_name:
  *                 type: string
  *                 description: User Full Name
- *                 example: Nikon Pack
+ *                 example: Nikon
+ *               last_name:
+ *                 type: string
+ *                 description: User Full Name
+ *                 example: Pack
  *               email:
  *                 type: string
  *                 description: User Email

@@ -7,7 +7,8 @@ const { Op } = require("sequelize");
 const updatePatientProfile = async (req, res) => {
   const { user_id } = req.user;
   const {
-    full_name,
+    first_name,
+    last_name,
     email,
     phone_number,
     date_of_birth,
@@ -34,7 +35,8 @@ const updatePatientProfile = async (req, res) => {
     // Update user profile
     await User.update(
       {
-        full_name,
+        first_name,
+        last_name,
         email,
         phone_number,
         date_of_birth,
@@ -64,7 +66,8 @@ const updatePatientProfile = async (req, res) => {
     return res.status(200).json({
       message: "Patient Profile updated successfully",
       patient: {
-        full_name: updatedPatient.user.full_name,
+        first_name: updatedPatient.user.first_name,
+        last_name: updatedPatient.user.last_name,
         email: updatedPatient.user.email,
         phone_number: updatedPatient.user.phone_number,
         date_of_birth: updatedPatient.user.date_of_birth,
@@ -87,7 +90,8 @@ const updatePatientProfile = async (req, res) => {
 const updateDoctorProfile = async (req, res) => {
   const { user_id } = req.user;
   const {
-    full_name,
+    first_name,
+    last_name,
     email,
     phone_number,
     date_of_birth,
@@ -115,7 +119,8 @@ const updateDoctorProfile = async (req, res) => {
     // Update user profile
     await User.update(
       {
-        full_name,
+        first_name,
+        last_name,
         email,
         phone_number,
         date_of_birth,
@@ -146,7 +151,8 @@ const updateDoctorProfile = async (req, res) => {
     return res.status(200).json({
       message: "Doctor Profile updated successfully",
       patient: {
-        full_name: updatedDoc.user.full_name,
+        first_name: updatedDoc.user.first_name,
+        last_name: updatedDoc.user.last_name,
         email: updatedDoc.user.email,
         phone_number: updatedDoc.user.phone_number,
         date_of_birth: updatedDoc.user.date_of_birth,
