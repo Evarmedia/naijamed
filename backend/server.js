@@ -5,9 +5,10 @@ const authRoutes = require("./routes/auth.route");
 const userRoutes = require("./routes/user.route");
 const { authenticateUser } = require("./middleware/authMiddleware");
 const { Message } = require("./models/models");
+const axios = require("axios");
 
-const { Groq } = require("groq-sdk");
-const groq = new Groq();
+// const { Groq } = require("groq-sdk");
+// const groq = new Groq();
 
 const app = express();
 const PORT = process.env.PORT || 3005;
@@ -64,52 +65,76 @@ app.get("/", (req, res) => {
   }
 })();
 
-io.on("connection", (socket) => {
+// Sending and recieving messages  using socketio
+io.on("connection", async (socket) => {
   console.log("Client connected");
+
+  // Authenticate user
+  const user_id = await authenticateUser(socket.handshake.auth.token);
+  if (!user_id) {
+    console.log('Please log in');
+    socket.emit("error", "You must be logged in to send messages");
+    socket.disconnect(true);
+    return;
+  }
 
   socket.on("message", async (message) => {
     try {
-      // Generate response using Groq SDK
-      const chatCompletion = await groq.chat.completions.create({
-        messages: [
-          {
-            role: "system",
-            content: `Your name is Dr. Tayo, Act as a licensed medical professional providing guidance and support to patients.
-            Don't introduce yourself in every response just provide the response to the patient.
-            Keep your responses as brief as possible, and focus on providing helpful and accurate information.
-            When a patient describes their symptoms or health concerns, assess the situation and provide a potential diagnosis and treatment plan. If the symptoms are severe or require immediate medical attention, recommend that the patient seek help from a doctor on the chat with doctor screen. Provide empathetic and supportive responses, and prioritize patient well-being and safety above all else." 
-            You can also add some specific guidelines to the prompt, such as: 
-            "Provide responses that are clear, concise, and easy to understand."
-            "Avoid providing definitive diagnoses or prescribing medication without proper medical evaluation."
-            "Recommend seeking medical attention if the patient's symptoms worsen or persist."
-            "Encourage patients to follow up with a doctor if they have any further questions or concerns.`,
-          },
-          {
-            role: "user",
-            content: message,
-          },
-        ],
-        model: "meta-llama/llama-4-scout-17b-16e-instruct",
-        temperature: 1,
-        max_completion_tokens: 1024,
-        top_p: 1,
-        stream: true,
-        stop: null,
-      });
-
-      let response = "";
-      for await (const chunk of chatCompletion) {
-        response += chunk.choices[0]?.delta?.content || "";
+      if (!user_id) {
+        socket.emit("error", "Invalid user ID. Please log in again");
+        return;
       }
 
-      // Clean up response
-      let formattedResponse = response.replace(/###/g, "\n\n**");
-      formattedResponse = formattedResponse.replace(/\*/g, `<br>`);
-      formattedResponse = formattedResponse.replace(/([.!?*])\s*/g, "$1\n");
-      formattedResponse = formattedResponse.replace(/\n\n/g, "\n");
+      // Fetch message history for the user
+      const messageHistory = await Message.findAll({
+        where: { user_id },
+        order: [["timestamp", "ASC"]],
+      });
+
+      const messageHistoryArray = messageHistory.map((msg) => ({
+        message_id: msg.message_id,
+        user_id: msg.user_id,
+        message: msg.message,
+        identifier: msg.identifier,
+        timestamp: msg.timestamp,
+        created_at: msg.created_at,
+      }));
+
+      let aiResponse;
+      try {
+        // Call the microservice endpoint
+        const response = await axios.post(
+          `https://mommap-ai.onrender.com/api/v1/chat/?user_id=${user_id}&message=${encodeURIComponent(
+            message
+          )}`,
+          messageHistoryArray
+        );
+        aiResponse = response.data.response;
+      } catch (error) {
+        console.error(error.response.data);
+        socket.emit("error", "Error processing message");
+        return;
+      }
+
+      // Save the user's message and AI response to the database
+      await Message.create({
+        message_id: `msg-${crypto.randomUUID()}`,
+        user_id,
+        message: message,
+        timestamp: new Date(),
+        identifier: "human",
+      });
+
+      await Message.create({
+        message_id: `msg-${crypto.randomUUID()}`,
+        user_id,
+        message: aiResponse, 
+        timestamp: new Date(),
+        identifier: "agent",
+      });
 
       // Send response back to user
-      socket.emit("response", formattedResponse);
+      socket.emit("response", aiResponse);
     } catch (error) {
       console.error(error);
       socket.emit("error", "Error processing message");

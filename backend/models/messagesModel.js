@@ -31,6 +31,11 @@ Message.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
+    created_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
     is_read: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,

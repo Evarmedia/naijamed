@@ -82,6 +82,7 @@ CREATE TABLE messages (
     message TEXT NOT NULL,
     identifier TEXT CHECK(identifier IN ('agent', 'human')),
     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     is_read BOOLEAN DEFAULT FALSE,
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE ON UPDATE CASCADE
 );
