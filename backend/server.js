@@ -49,7 +49,6 @@ app.get("/", (req, res) => {
     await sequelize.authenticate();
     console.log("Database connected successfully.");
 
-    // Sync database models (you can set { alter: true } or { force: true } in development)
     sequelize
       .sync()
       .then(() => console.log("Database synced"))

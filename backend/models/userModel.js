@@ -143,6 +143,11 @@ Patients.init(
       allowNull: true,
       defaultValue: null,
     },
+    bmi: {
+      type: DataTypes.FLOAT,
+      allowNull: true,
+      defaultValue: null,
+    },
     allergies: {
       type: DataTypes.STRING,
       allowNull: true,

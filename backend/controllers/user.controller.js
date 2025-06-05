@@ -52,8 +52,8 @@ const updatePatientProfile = async (req, res) => {
       {
         address,
         blood_group,
-        height,
-        weight,
+        height, // meters
+        weight, //kg
       },
       { where: { user_id } }
     );
@@ -62,6 +62,10 @@ const updatePatientProfile = async (req, res) => {
       where: { user_id },
       include: [{ model: User, as: "user" }],
     });
+
+    const BMI = updatedPatient.weight / (updatedPatient.height * updatedPatient.height);
+    updatedPatient.bmi = BMI.toFixed(2); // Calculate and add BMI to the response
+    await updatedPatient.save(); // Save the updated patient with BMI
 
     return res.status(200).json({
       message: "Patient Profile updated successfully",
@@ -78,6 +82,7 @@ const updatePatientProfile = async (req, res) => {
         blood_group: updatedPatient.blood_group,
         height: updatedPatient.height,
         weight: updatedPatient.weight,
+        bmi: updatedPatient.bmi,
       },
     });
   } catch (error) {

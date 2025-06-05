@@ -40,6 +40,7 @@ CREATE TABLE patients (
     height REAL CHECK(height > 0),
     weight REAL CHECK(weight > 0),
     allergies TEXT,
+    bmi REAL CHECK(bmi > 0),
     emergency_contact_name TEXT,
     emergency_contact_phone TEXT,
     emergency_contact_relationship TEXT,
