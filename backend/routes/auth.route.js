@@ -1,15 +1,22 @@
 const express = require('express');
-const { register, login, verifyEmail, forgotPassword, resetPassword } = require('../controllers/auth.controller');
-const {checkRole} = require('../middleware/roleMiddleware.js');
-const authMiddleware = require('../middleware/authMiddleware.js');
+const { register, login, verifyOtp, forgotPassword, resetPassword } = require('../controllers/auth.controller');
+const { authLimiter } = require('../middleware/rateLimiter');
+const { auditLogger } = require('../middleware/auditLogger');
 
 const router = express.Router();
 
 /**
  * @swagger
+ * tags:
+ *   name: Auth
+ *   description: User authentication and registration
+ */
+
+/**
+ * @swagger
  * /api/auth/signup:
  *   post:
- *     summary: A new user can sign up
+ *     summary: Register a new user
  *     tags: [Auth]
  *     requestBody:
  *       required: true
@@ -17,43 +24,43 @@ const router = express.Router();
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - first_name
+ *               - last_name
+ *               - email
+ *               - password
+ *               - confirm_password
+ *               - role
  *             properties:
  *               first_name:
  *                 type: string
- *                 description: User Full Name
- *                 example: Nikon
+ *                 example: John
  *               last_name:
  *                 type: string
- *                 description: User Full Name
- *                 example: Pack
+ *                 example: Doe
  *               email:
  *                 type: string
- *                 description: User Email
- *                 example: "newuser@example.com"
+ *                 example: johndoe@example.com
  *               phone_number:
  *                 type: string
- *                 description: User phone number
- *                 example: "+2348134567888"
+ *                 example: "+2348000000000"
  *               password:
  *                 type: string
- *                 description: User password
- *                 example: "Secret@123"
+ *                 example: "SecurePass123"
  *               confirm_password:
  *                 type: string
- *                 description: User confirm password
- *                 example: Secret@123
+ *                 example: "SecurePass123"
  *               role:
- *                 type: enum
+ *                 type: string
  *                 enum: [patient, doctor]
- *                 description: User role (patient or doctor)
+ *                 example: patient
  *     responses:
  *       201:
- *         description: User registered successfully, check your email for verification
+ *         description: User registered successfully
  *       400:
  *         description: Bad request
- *
  */
-router.post('/signup', register);
+router.post('/signup', authLimiter, auditLogger('REGISTER', 'user'), register);
 
 /**
  * @swagger
@@ -67,29 +74,32 @@ router.post('/signup', register);
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - password
  *             properties:
- *               phone_number:
+ *               email:
  *                 type: string
- *                 description: User Full Name
- *                 example: "+2348134567888"
+ *                 example: johndoe@example.com
  *               password:
  *                 type: string
- *                 description: User password
- *                 example: "Secret@123"
+ *                 example: "SecurePass123"
  *     responses:
- *       201:
+ *       200:
  *         description: User logged in successfully
  *       400:
  *         description: Bad request
- *
+ *       401:
+ *         description: Invalid credentials
+ *       403:
+ *         description: Account deactivated
  */
-router.post('/login', login);
+router.post('/login', authLimiter, auditLogger('LOGIN', 'user'), login);
 
 /**
- * @swaggerr
- * /api/auth/verify-email:
+ * @swagger
+ * /api/auth/verify-otp:
  *   post:
- *     summary: Verify user email
+ *     summary: Verify user email with OTP
  *     tags: [Auth]
  *     requestBody:
  *       required: true
@@ -97,24 +107,31 @@ router.post('/login', login);
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - email
+ *               - otp
  *             properties:
- *               token:
+ *               email:
  *                 type: string
- *                 description: Verification token
+ *                 example: johndoe@example.com
+ *               otp:
+ *                 type: string
+ *                 example: "123456"
  *     responses:
  *       200:
  *         description: Email verified successfully
  *       400:
- *         description: Bad request
- *
+ *         description: Invalid OTP or already verified
+ *       404:
+ *         description: User not found
  */
-router.post('/verify-email', verifyEmail);
+router.post('/verify-otp', authLimiter, auditLogger('VERIFY_OTP', 'user'), verifyOtp);
 
 /**
- * @swaggerr
+ * @swagger
  * /api/auth/forgot-password:
  *   post:
- *     summary: Forgot password
+ *     summary: Request password reset email
  *     tags: [Auth]
  *     requestBody:
  *       required: true
@@ -122,24 +139,27 @@ router.post('/verify-email', verifyEmail);
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - email
  *             properties:
  *               email:
  *                 type: string
- *                 description: User email
+ *                 example: johndoe@example.com
  *     responses:
  *       200:
  *         description: Password reset link sent successfully
  *       400:
  *         description: Bad request
- *
+ *       404:
+ *         description: User not found
  */
-router.post('/forgot-password', forgotPassword);
+router.post('/forgot-password', authLimiter, auditLogger('FORGOT_PASSWORD', 'user'), forgotPassword);
 
 /**
- * @swaggerr
+ * @swagger
  * /api/auth/reset-password:
  *   post:
- *     summary: Reset password
+ *     summary: Reset password using token
  *     tags: [Auth]
  *     requestBody:
  *       required: true
@@ -147,20 +167,22 @@ router.post('/forgot-password', forgotPassword);
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - resetToken
+ *               - newPassword
  *             properties:
- *               token:
+ *               resetToken:
  *                 type: string
- *                 description: Password reset token
- *               password:
+ *                 example: "abcdef123456"
+ *               newPassword:
  *                 type: string
- *                 description: New password
+ *                 example: "NewSecurePass123"
  *     responses:
  *       200:
  *         description: Password reset successfully
  *       400:
- *         description: Bad request
- *
+ *         description: Invalid or expired token
  */
-router.post('/reset-password', resetPassword);
+router.post('/reset-password', authLimiter, auditLogger('RESET_PASSWORD', 'user'), resetPassword);
 
 module.exports = router;

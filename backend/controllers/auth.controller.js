@@ -7,10 +7,7 @@ const {
   sendResetPasswordEmail,
 } = require("../utils/emailService.js");
 const { Op } = require("sequelize");
-
 const config = require("../config/jwt");
-const redis = require("../utils/redis.js");
-const { error } = require("console");
 
 // Register a new user
 const register = async (req, res) => {
@@ -18,8 +15,12 @@ const register = async (req, res) => {
     const { first_name, last_name, email, phone_number, password, confirm_password, role } =
       req.body;
 
-    if (!first_name || !last_name || !email || !phone_number) {
-      return res.status(400).json({error: "All fields are required" })
+    if (!first_name || !last_name || !email || !password || !role) {
+      return res.status(400).json({ message: "All required fields must be provided" });
+    }
+
+    if (!["patient", "doctor"].includes(role)) {
+      return res.status(400).json({ message: "Role must be 'patient' or 'doctor'" });
     }
 
     // Check if the user already exists
@@ -28,79 +29,106 @@ const register = async (req, res) => {
       return res.status(400).json({ message: "Email is already registered" });
     }
 
-    const existingUserByPhone = await User.findOne({ where: { phone_number } });
-    if (existingUserByPhone) {
-      return res
-        .status(400)
-        .json({ message: "Phone number is already registered" });
+    if (phone_number) {
+      const existingUserByPhone = await User.findOne({ where: { phone_number } });
+      if (existingUserByPhone) {
+        return res.status(400).json({ message: "Phone number is already registered" });
+      }
     }
 
     if (password !== confirm_password) {
       return res.status(400).json({ message: "Passwords do not match" });
     }
+
     const hashedPassword = await bcrypt.hash(password, 10);
-    // Create the user
+
+    // Generate OTP for verification
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
     const newUser = await User.create({
       first_name,
       last_name,
       email,
-      phone_number,
+      phone_number: phone_number || null,
       password: hashedPassword,
       role,
+      verification_token: otp,
+      verification_token_expiry: otpExpiry,
     });
 
     if (newUser.role === "patient") {
-      await Patients.create({
-        user_id: newUser.user_id,
-      });
+      await Patients.create({ user_id: newUser.user_id });
     }
 
     if (newUser.role === "doctor") {
-      await Doctors.create({
-        user_id: newUser.user_id,
-      });
+      await Doctors.create({ user_id: newUser.user_id });
+    }
+
+    // Send verification email
+    try {
+      await sendVerificationEmail(newUser.email, otp);
+    } catch (emailErr) {
+      console.error("Failed to send verification email:", emailErr);
     }
 
     return res.status(201).json({
-      message:
-        "User registeration successfull, Update your profile",
+      message: "User registered successfully. Please verify your email with the OTP sent.",
       user: {
         user_id: newUser.user_id,
-        full_name: newUser.full_name,
+        first_name: newUser.first_name,
+        last_name: newUser.last_name,
         email: newUser.email,
         phone_number: newUser.phone_number,
         role: newUser.role,
       },
     });
   } catch (error) {
-    console.error(error);
+    console.error("Registration error:", error);
     return res.status(500).json({ message: "Server error" });
   }
 };
-// Add login logic here using config from config/jwt
+
+// Login — supports email or phone_number
 const login = async (req, res) => {
-  const { phone_number, password } = req.body;
+  const { email, password } = req.body;
 
   try {
-    // Check if the user exists
-    const user = await User.findOne({ where: { phone_number } });
+    if (!password || (!email)) {
+      return res
+        .status(400)
+        .json({ message: "Email and password are required" });
+    }
+
+    // Find user by email or phone
+   
+    const user = await User.findOne({ where: { email } });
+
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Check if the password is correct
+    if (!user.is_active) {
+      return res.status(403).json({ message: "Account is deactivated" });
+    }
+
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    // Create a JWT token
+    // Update last login
+    await user.update({ last_login: new Date() });
+
     const token = jwt.sign(
-      { user_id: user.user_id, email: user.email, phone_number: user.phone_number, role: user.role },
-      config.jwtSecret,
       {
-        expiresIn: config.jwtExpiration,
-      }
+        user_id: user.user_id,
+        email: user.email,
+        phone_number: user.phone_number,
+        role: user.role,
+      },
+      config.jwtSecret,
+      { expiresIn: config.jwtExpiration }
     );
 
     return res.status(200).json({
@@ -108,95 +136,105 @@ const login = async (req, res) => {
       token,
       user: {
         user_id: user.user_id,
-        full_name: user.full_name,
+        first_name: user.first_name,
+        last_name: user.last_name,
         email: user.email,
-        phone_number: user.phone_number,
         role: user.role,
+        is_verified: user.is_verified,
       },
     });
   } catch (error) {
-    console.error(error);
+    console.error("Login error:", error);
     return res.status(500).json({ message: "Server error" });
   }
 };
 
-// verify-email
-// Controller to verify the email code with Redis
-const verifyEmail = async (req, res) => {
-  const { email, verificationCode } = req.body;
-
-  // Get the verification code from Redis
-  const storedCode = await redis.get(`verification_code_${email}`);
-  if (!storedCode) {
-    return res
-      .status(400)
-      .json({ message: "Verification code has expired or does not exist" });
-  }
-
-  // Compare the stored code with the submitted one
-  if (storedCode === verificationCode) {
-    // Update the user's status to 'verified'
-    const user = await User.findOne({ where: { email } });
-    if (user) {
-      await user.update({
-        status: "verified",
-      });
-
-      // delete the code from Redis once verified
-      await redis.del(`verification_code_${email}`);
-
-      return res.status(200).json({ message: "Email verified successfully" });
-    } else {
-      return res.status(404).json({ message: "User not found" });
-    }
-  } else {
-    return res.status(400).json({ message: "Invalid verification code" });
-  }
-};
-
-// Forgot Password Endpoint
-const forgotPassword = async (req, res) => {
-  const { email } = req.body;
+// Verify OTP (DB-based, replaces Redis)
+const verifyOtp = async (req, res) => {
+  const { email, otp } = req.body;
 
   try {
-    // Check if user exists
+    if (!email || !otp) {
+      return res.status(400).json({ message: "Email and OTP are required" });
+    }
+
     const user = await User.findOne({ where: { email } });
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Generate a random reset token (for example, using crypto)
+    if (user.is_verified) {
+      return res.status(400).json({ message: "User is already verified" });
+    }
+
+    if (!user.verification_token || user.verification_token !== otp) {
+      return res.status(400).json({ message: "Invalid OTP" });
+    }
+
+    if (new Date() > new Date(user.verification_token_expiry)) {
+      return res.status(400).json({ message: "OTP has expired" });
+    }
+
+    await user.update({
+      is_verified: true,
+      verification_token: null,
+      verification_token_expiry: null,
+    });
+
+    return res.status(200).json({ message: "Email verified successfully" });
+  } catch (error) {
+    console.error("OTP verification error:", error);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Forgot Password
+const forgotPassword = async (req, res) => {
+  const { email } = req.body;
+
+  try {
+    if (!email) {
+      return res.status(400).json({ message: "Email is required" });
+    }
+
+    const user = await User.findOne({ where: { email } });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
     const resetToken = crypto.randomBytes(20).toString("hex");
-    const resetTokenExpiration = new Date(Date.now() + 3600000); // Token expires in 1 hour
+    const resetTokenExpiration = new Date(Date.now() + 3600000); // 1 hour
 
-    // Store reset token and expiration in the database
-    user.reset_token = resetToken;
-    user.reset_token_expiration = resetTokenExpiration;
-    await user.save();
+    await user.update({
+      reset_password_token: resetToken,
+      reset_password_token_expiry: resetTokenExpiration,
+    });
 
-    // Send the reset token to the user's email
     await sendResetPasswordEmail(user.email, resetToken);
 
     return res.status(200).json({
       message: "Password reset email sent. Please check your inbox.",
     });
   } catch (error) {
-    console.error(error);
+    console.error("Forgot password error:", error);
     return res.status(500).json({ message: "Server error" });
   }
 };
 
-// Reset Password Endpoint
+// Reset Password
 const resetPassword = async (req, res) => {
   const { resetToken, newPassword } = req.body;
 
   try {
-    // Find the user by the reset token
+    if (!resetToken || !newPassword) {
+      return res.status(400).json({ message: "Reset token and new password are required" });
+    }
+
     const user = await User.findOne({
       where: {
-        reset_token: resetToken,
-        reset_token_expiration: {
-          [Op.gt]: new Date(), // Ensure the token has not expired
+        reset_password_token: resetToken,
+        reset_password_token_expiry: {
+          [Op.gt]: new Date(),
         },
       },
     });
@@ -205,20 +243,19 @@ const resetPassword = async (req, res) => {
       return res.status(400).json({ message: "Invalid or expired token" });
     }
 
-    // Hash the new password
     const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-    // Update the user's password and reset token fields
-    user.password = hashedPassword;
-    user.reset_token = null;
-    user.reset_token_expiration = null;
-    await user.save();
+    await user.update({
+      password: hashedPassword,
+      reset_password_token: null,
+      reset_password_token_expiry: null,
+    });
 
     return res
       .status(200)
       .json({ message: "Password has been successfully updated." });
   } catch (error) {
-    console.error(error);
+    console.error("Reset password error:", error);
     return res.status(500).json({ message: "Server error" });
   }
 };
@@ -226,7 +263,7 @@ const resetPassword = async (req, res) => {
 module.exports = {
   register,
   login,
-  verifyEmail,
+  verifyOtp,
   forgotPassword,
   resetPassword,
 };

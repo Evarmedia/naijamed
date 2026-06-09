@@ -1,17 +1,72 @@
-const { updatePatientProfile, updateDoctorProfile } = require('../controllers/user.controller.js');
 const express = require('express');
+const {
+  getPatientById,
+  updatePatientProfile,
+  uploadPatientPhoto,
+  getDoctorById,
+  updateDoctorProfile,
+  uploadDoctorPhoto,
+  getPatientHistory,
+  getDoctorCaseLog,
+} = require('../controllers/user.controller.js');
 const { authMiddleware } = require('../middleware/authMiddleware.js');
+const upload = require('../middleware/upload.js');
+const { auditLogger } = require('../middleware/auditLogger');
 
 const router = express.Router();
 
 /**
  * @swagger
- * /api/users/patient/profile:
+ * tags:
+ *   name: Patients
+ *   description: Patient profile management and history
+ */
+
+/**
+ * @swagger
+ * tags:
+ *   name: Doctors
+ *   description: Doctor profile management and case logs
+ */
+
+/**
+ * @swagger
+ * /api/users/patients/{id}:
+ *   get:
+ *     summary: Get patient profile by ID
+ *     tags: [Patients]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: Patient ID
+ *     responses:
+ *       200:
+ *         description: Patient profile data
+ *       404:
+ *         description: Patient not found
+ */
+router.get('/patients/:id', authMiddleware, getPatientById);
+
+/**
+ * @swagger
+ * /api/users/patients/{id}/profile:
  *   put:
  *     summary: Update patient profile
  *     tags: [Patients]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: Patient ID
  *     requestBody:
  *       required: true
  *       content:
@@ -21,88 +76,105 @@ const router = express.Router();
  *             properties:
  *               first_name:
  *                 type: string
- *                 example: "Nikon"
  *               last_name:
  *                 type: string
- *                 example: "Packard"
+ *               phone_number:
+ *                 type: string
  *               date_of_birth:
  *                 type: string
  *                 format: date
- *                 example: "1998-05-15"
  *               gender:
- *                 type: enum
- *                 example: male
- *               nationality:
  *                 type: string
- *                 example: Somalia
- *               profile_url:
- *                 type: string
- *                 example: "https://example.com/profile.jpg"
  *               address:
  *                 type: string
- *                 example: "123 Main St, City, Country"
+ *               state:
+ *                 type: string
+ *               lga:
+ *                 type: string
  *               blood_group:
- *                 type: enum
- *                 example: O+
+ *                 type: string
+ *               genotype:
+ *                 type: string
  *               height:
  *                 type: number
- *                 example: 6
  *               weight:
  *                 type: number
- *                 example: 70
+ *               allergies:
+ *                 type: string
+ *               chronic_conditions:
+ *                 type: string
+ *               medications:
+ *                 type: string
  *     responses:
  *       200:
  *         description: Profile updated successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                 patient:
- *                   type: object
- *                   properties:
- *                     first_name:
- *                       type: string
- *                     last_name :
- *                       type: string
- *                     email:
- *                       type: string
- *                     phone_number:
- *                       type: string
- *                     date_of_birth:
- *                       type: string
- *                       format: date
- *                     gender:
- *                       type: string
- *                     nationality:
- *                       type: string
- *                     profile_url:
- *                       type: string
- *                     address:
- *                       type: string
- *                     blood_group:
- *                       type: string
- *                     height:
- *                       type: number
- *                     weight:
- *                       type: number
- *       404:
- *         description: Patient not found
- *       500:
- *         description: Internal server error
  */
-router.put('/patient/profile', authMiddleware, updatePatientProfile);
+router.put('/patients/:id/profile', authMiddleware, auditLogger('UPDATE', 'patient'), updatePatientProfile);
 
 /**
  * @swagger
- * /api/users/doctor/profile:
+ * /api/users/patients/{id}/photo:
+ *   post:
+ *     summary: Upload patient profile photo
+ *     tags: [Patients]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               photo:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       200:
+ *         description: Photo uploaded successfully
+ */
+router.post('/patients/:id/photo', authMiddleware, upload.single('photo'), auditLogger('UPLOAD_PHOTO', 'patient'), uploadPatientPhoto);
+
+/**
+ * @swagger
+ * /api/users/doctors/{id}:
+ *   get:
+ *     summary: Get doctor profile by ID
+ *     tags: [Doctors]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *     responses:
+ *       200:
+ *         description: Doctor profile data
+ */
+router.get('/doctors/:id', authMiddleware, getDoctorById);
+
+/**
+ * @swagger
+ * /api/users/doctors/{id}/profile:
  *   put:
  *     summary: Update doctor profile
  *     tags: [Doctors]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
  *     requestBody:
  *       required: true
  *       content:
@@ -112,113 +184,91 @@ router.put('/patient/profile', authMiddleware, updatePatientProfile);
  *             properties:
  *               first_name:
  *                 type: string
- *                 example: Nikon
- *               last_name:
- *                 type: string
- *                 example: Lark
- *               date_of_birth:
- *                 type: string
- *                 format: date
- *                 example: "1990-01-01"
- *               gender:
- *                 type: string
- *                 example: "male"
- *               nationality:
- *                 type: string
- *                 example: "American"
- *               profile_url:
- *                 type: string
- *                 example: "https://example.com/profile.jpg"
- *               age:
- *                 type: integer
- *                 example: 30
  *               specialization:
  *                 type: string
- *                 example: "Cardiology"
- *               medical_rank:
- *                 type: string
- *                 example: "Senior Consultant"
  *               experience_years:
  *                 type: integer
- *                 example: 5
- *               license_number:
+ *               hospital_affiliation:
  *                 type: string
- *                 example: "123456"
  *     responses:
  *       200:
  *         description: Doctor Profile updated successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Doctor Profile updated successfully"
- *                 doctor:
- *                   type: object
- *                   properties:
- *                     first_name:
- *                       type: string
- *                       example:  "Nikon"
- *                     last_name:
- *                       type: string
- *                       example: "Lark"
- *                     email:
- *                       type: string
- *                       example: "nikonlark@example.com"
- *                     phone_number:
- *                       type: string
- *                       example: "+1234567890"
- *                     date_of_birth:
- *                       type: string
- *                       format: date
- *                       example: "1990-01-01"
- *                     gender:
- *                       type: string
- *                       example: "male"
- *                     nationality:
- *                       type: string
- *                       example: "American"
- *                     profile_url:
- *                       type: string
- *                       example: "https://example.com/profile.jpg"
- *                     age:
- *                       type: integer
- *                       example: 30
- *                     specialization:
- *                       type: string
- *                       example: "Cardiology"
- *                     medical_rank:
- *                       type: string
- *                       example: "Senior Consultant"
- *                     experience_years:
- *                       type: integer
- *                       example: 5
- *                     license_number:
- *                       type: string
- *                       example: "123456"
- *       404:
- *         description: Doctor not found
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Doctor not found"
- *       500:
- *         description: Internal server error
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Internal server error"
  */
-router.put('/doctor/profile', authMiddleware, updateDoctorProfile);
+router.put('/doctors/:id/profile', authMiddleware, auditLogger('UPDATE', 'doctor'), updateDoctorProfile);
+
+/**
+ * @swagger
+ * /api/users/doctors/{id}/photo:
+ *   post:
+ *     summary: Upload doctor profile photo
+ *     tags: [Doctors]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               photo:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       200:
+ *         description: Photo uploaded successfully
+ */
+router.post('/doctors/:id/photo', authMiddleware, upload.single('photo'), auditLogger('UPLOAD_PHOTO', 'doctor'), uploadDoctorPhoto);
+
+/**
+ * @swagger
+ * /api/users/patients/{id}/history:
+ *   get:
+ *     summary: Get patient consultation history
+ *     tags: [Patients]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *       - in: query
+ *         name: severity
+ *         schema:
+ *           type: string
+ *         description: Filter by severity
+ *     responses:
+ *       200:
+ *         description: Patient history retrieved
+ */
+router.get('/patients/:id/history', authMiddleware, getPatientHistory);
+
+/**
+ * @swagger
+ * /api/users/doctors/{id}/caselog:
+ *   get:
+ *     summary: Get doctor case log history
+ *     tags: [Doctors]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *     responses:
+ *       200:
+ *         description: Doctor caselog retrieved
+ */
+router.get('/doctors/:id/caselog', authMiddleware, getDoctorCaseLog);
 
 module.exports = router;

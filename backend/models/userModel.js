@@ -1,9 +1,6 @@
 const { Model, DataTypes } = require("sequelize");
 const sequelize = require("../config/db");
-
 const crypto = require("crypto");
-
-const { v4: uuidv4 } = require("uuid");
 
 class User extends Model {}
 User.init(
@@ -16,7 +13,7 @@ User.init(
     },
     phone_number: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true,
       unique: true,
     },
     password: {
@@ -42,16 +39,22 @@ User.init(
       defaultValue: null,
     },
     gender: {
-      type: DataTypes.ENUM("male", "female", "others"),
+      type: DataTypes.STRING,
       allowNull: true,
+      validate: {
+        isIn: [["male", "female", "others"]],
+      },
     },
     nationality: {
       type: DataTypes.STRING,
       allowNull: true,
     },
     role: {
-      type: DataTypes.ENUM("patient", "doctor"),
+      type: DataTypes.STRING,
       allowNull: false,
+      validate: {
+        isIn: [["patient", "doctor"]],
+      },
     },
     profile_url: {
       type: DataTypes.STRING,
@@ -129,9 +132,29 @@ Patients.init(
       allowNull: true,
       defaultValue: null,
     },
-    blood_group: {
-      type: DataTypes.ENUM("A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"),
+    state: {
+      type: DataTypes.STRING,
       allowNull: true,
+      defaultValue: null,
+    },
+    lga: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+    },
+    blood_group: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      validate: {
+        isIn: [["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]],
+      },
+    },
+    genotype: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      validate: {
+        isIn: [["AA", "AS", "SS", "AC", "SC", "CC"]],
+      },
     },
     height: {
       type: DataTypes.FLOAT,
@@ -153,6 +176,16 @@ Patients.init(
       allowNull: true,
       defaultValue: null,
     },
+    chronic_conditions: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+    },
+    medications: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+    },
     emergency_contact_name: {
       type: DataTypes.STRING,
       allowNull: true,
@@ -168,17 +201,27 @@ Patients.init(
       allowNull: true,
       defaultValue: null,
     },
+    next_of_kin_name: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+    },
+    next_of_kin_phone: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+    },
+    next_of_kin_relationship: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+    },
   },
   {
     sequelize,
     modelName: "Patients",
     tableName: "patients",
     timestamps: false,
-    // hooks: {
-    //   beforeCreate: (patient, options) => {
-    //     patient.patient_id = `pat-${crypto.randomUUID()}`;
-    //   },
-    // },
   }
 );
 
@@ -221,6 +264,26 @@ Doctors.init(
       defaultValue: null,
     },
     license_number: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+    },
+    license_expiry_date: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: null,
+    },
+    hospital_affiliation: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+    },
+    address: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+    },
+    state: {
       type: DataTypes.STRING,
       allowNull: true,
       defaultValue: null,

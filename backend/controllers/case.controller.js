@@ -1,0 +1,219 @@
+const { Case, Patients, Doctors, User } = require("../models/models");
+const { createNotification } = require("../utils/notificationHelper");
+const { Op } = require("sequelize");
+
+// POST /cases — create a new case
+const createCase = async (req, res) => {
+  try {
+    const { patient_id, symptoms, triage_classification, ai_summary, doctor_id, notes } = req.body;
+
+    if (!patient_id) {
+      return res.status(400).json({ message: "patient_id is required" });
+    }
+
+    const patient = await Patients.findByPk(patient_id);
+    if (!patient) {
+      return res.status(404).json({ message: "Patient not found" });
+    }
+
+    const newCase = await Case.create({
+      patient_id,
+      doctor_id: doctor_id || null,
+      symptoms,
+      triage_classification: triage_classification || null,
+      ai_summary: ai_summary || null,
+      notes: notes || null,
+      status: doctor_id ? "assigned" : "open",
+    });
+
+    // If doctor assigned, notify them
+    if (doctor_id) {
+      const doctor = await Doctors.findByPk(doctor_id);
+      if (doctor) {
+        await createNotification(
+          doctor.user_id,
+          "case_assigned",
+          "New Case Assigned",
+          `A new ${triage_classification || "unclassified"} case has been assigned to you.`,
+          newCase.case_id
+        );
+      }
+    }
+
+    return res.status(201).json({
+      message: "Case created successfully",
+      case: newCase,
+    });
+  } catch (error) {
+    console.error("Error creating case:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+// GET /cases/:id
+const getCaseById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const caseRecord = await Case.findByPk(id, {
+      include: [
+        {
+          model: Patients,
+          as: "patient",
+          include: [{ model: User, as: "user", attributes: ["first_name", "last_name", "email"] }],
+        },
+        {
+          model: Doctors,
+          as: "doctor",
+          include: [{ model: User, as: "user", attributes: ["first_name", "last_name", "email"] }],
+        },
+      ],
+    });
+
+    if (!caseRecord) {
+      return res.status(404).json({ message: "Case not found" });
+    }
+
+    return res.status(200).json({ case: caseRecord });
+  } catch (error) {
+    console.error("Error fetching case:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+// PUT /cases/:id — update case (assign doctor, change status, add notes)
+const updateCase = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { doctor_id, status, notes, triage_classification, ai_summary } = req.body;
+
+    const caseRecord = await Case.findByPk(id);
+    if (!caseRecord) {
+      return res.status(404).json({ message: "Case not found" });
+    }
+
+    const updateData = { updated_at: new Date() };
+
+    if (doctor_id !== undefined) {
+      const doctor = await Doctors.findByPk(doctor_id);
+      if (!doctor) {
+        return res.status(404).json({ message: "Doctor not found" });
+      }
+      updateData.doctor_id = doctor_id;
+      updateData.status = "assigned";
+
+      // Notify doctor
+      await createNotification(
+        doctor.user_id,
+        "case_assigned",
+        "New Case Assigned",
+        `A case has been assigned to you.`,
+        id
+      );
+    }
+
+    if (status) {
+      updateData.status = status;
+      if (status === "closed") {
+        updateData.closed_at = new Date();
+      }
+    }
+
+    if (notes !== undefined) updateData.notes = notes;
+    if (triage_classification !== undefined) updateData.triage_classification = triage_classification;
+    if (ai_summary !== undefined) updateData.ai_summary = ai_summary;
+
+    await Case.update(updateData, { where: { case_id: id } });
+
+    const updatedCase = await Case.findByPk(id, {
+      include: [
+        {
+          model: Patients,
+          as: "patient",
+          include: [{ model: User, as: "user", attributes: ["first_name", "last_name"] }],
+        },
+        {
+          model: Doctors,
+          as: "doctor",
+          include: [{ model: User, as: "user", attributes: ["first_name", "last_name"] }],
+        },
+      ],
+    });
+
+    return res.status(200).json({
+      message: "Case updated successfully",
+      case: updatedCase,
+    });
+  } catch (error) {
+    console.error("Error updating case:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+// GET /cases — list cases with filters
+const listCases = async (req, res) => {
+  try {
+    const { doctorId, patientId, status, severity, page = 1, limit = 20 } = req.query;
+
+    const where = {};
+    if (doctorId) where.doctor_id = doctorId;
+    if (patientId) where.patient_id = patientId;
+    if (status) where.status = status;
+    if (severity) where.triage_classification = severity;
+
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+
+    const { count, rows: cases } = await Case.findAndCountAll({
+      where,
+      include: [
+        {
+          model: Patients,
+          as: "patient",
+          include: [{ model: User, as: "user", attributes: ["first_name", "last_name"] }],
+        },
+        {
+          model: Doctors,
+          as: "doctor",
+          include: [{ model: User, as: "user", attributes: ["first_name", "last_name"] }],
+        },
+      ],
+      order: [
+        // Sort by severity: emergency > severe > moderate > mild
+        [
+          require("sequelize").literal(
+            `CASE triage_classification 
+              WHEN 'emergency' THEN 1 
+              WHEN 'severe' THEN 2 
+              WHEN 'moderate' THEN 3 
+              WHEN 'mild' THEN 4 
+              ELSE 5 END`
+          ),
+          "ASC",
+        ],
+        ["created_at", "DESC"],
+      ],
+      limit: parseInt(limit),
+      offset,
+    });
+
+    return res.status(200).json({
+      cases,
+      pagination: {
+        total: count,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        totalPages: Math.ceil(count / parseInt(limit)),
+      },
+    });
+  } catch (error) {
+    console.error("Error listing cases:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+module.exports = {
+  createCase,
+  getCaseById,
+  updateCase,
+  listCases,
+};
