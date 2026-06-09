@@ -40,6 +40,10 @@ Message.init(
       type: DataTypes.BOOLEAN,
       defaultValue: false,
     },
+    is_emergency: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
   },
   {
     sequelize,
