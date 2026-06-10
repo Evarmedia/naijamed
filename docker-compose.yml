@@ -1,0 +1,64 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: naijamed-db
+    restart: always
+    environment:
+      POSTGRES_USER: naijamed_user
+      POSTGRES_PASSWORD: naijamed_password
+      POSTGRES_DB: naijamed_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U naijamed_user -d naijamed_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: naijamed-backend
+    restart: always
+    environment:
+      - NODE_ENV=development
+      - PORT=3005
+      - DATABASE_URL={DATABASE_URL}
+      - JWT_SECRET={JWT_SECRET}
+      - JWT_EXPIRATION=1h
+      - EMAIL_HOST={EMAIL_HOST}
+      - EMAIL_PORT={EMAIL_PORT}
+      - EMAIL_USER={EMAIL_USER}
+      - EMAIL_PASS={EMAIL_PASS}
+      - EMAIL_FROM={EMAIL_FROM}
+      - GROQ_API_KEY={GROQ_API_KEY}
+    ports:
+      - "3005:3005"
+    depends_on:
+      - postgres
+    command: sh -c "npm run migrate && npm run dev"
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: naijamed-frontend
+    restart: always
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:3005/api
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+
+volumes:
+  postgres_data:

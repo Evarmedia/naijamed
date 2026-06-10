@@ -73,11 +73,12 @@ app.get("/", (req, res) => {
     console.log("Database connected successfully.");
 
     // Sync all models (alter: true updates schema without dropping existing data)
-    await sequelize.sync({ alter: true });
+    // await sequelize.sync({ alter: true });
     console.log("Database synced");
 
     // Start the server
     server.listen(PORT, () => {
+      console.log(`starting server in ${process.env.NODE_ENV} mode...`);
       console.log(`Server is running on http://localhost:${PORT}`);
       console.log(`Swagger Docs available at http://localhost:${PORT}/api-docs`);
     });
