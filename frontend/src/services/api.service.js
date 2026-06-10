@@ -48,6 +48,5 @@ export const apiService = {
     apiClient.post(`/chats/${conversationId}/messages`, { message, message_type: 'text' }),
     
   // AI
-  patientAssistant: (question) => apiClient.post('/ai/patient-assistant', { question }),
   triage: (data) => apiClient.post('/ai/triage', data),
 };

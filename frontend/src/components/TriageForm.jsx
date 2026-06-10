@@ -23,10 +23,10 @@ const TriageForm = () => {
 
     setLoading(true);
     try {
-      // The old logic calls the triage API and then manually adds messages to history
-      // We'll follow a similar pattern but let the backend handle the conversation update if possible
-      // Actually, old code calls triage API separately
-      const response = await apiService.triage(formData);
+      const response = await apiService.triage({
+        ...formData,
+        conversation_id: currentConversation?.conversation_id
+      });
       
       // After triage, we want to go back to chat mode to see the result
       // But wait, the old code adds the human and ai messages to the local state

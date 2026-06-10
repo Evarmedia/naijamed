@@ -144,7 +144,7 @@ io.on("connection", async (socket) => {
         user_id,
         message: message,
         identifier: "human",
-        sender_role: "patient", // Could derive from token role if needed
+        sender_role: "patient", // Ideally, derive from user role in real app
         timestamp: new Date(),
       });
 
@@ -153,6 +153,9 @@ io.on("connection", async (socket) => {
 
       // 2. If it's an AI conversation, get AI response
       if (conversation.type === "patient_ai" || conversation.type === "doctor_ai") {
+        // Emit typing indicator
+        io.to(conversation.conversation_id).emit("typing", { conversationId: conversation.conversation_id });
+
         // Fetch message history for AI context
         const messageHistory = await Message.findAll({
           where: { conversation_id: conversation.conversation_id },
@@ -166,19 +169,32 @@ io.on("connection", async (socket) => {
           message: msg.message,
           identifier: msg.identifier,
           timestamp: msg.timestamp,
+          created_at: msg.created_at,
         }));
+
+        const aiPayload = {
+          user_id: user_id,
+          message: message,
+          chat_history: formattedHistory,
+        }
 
         const AI_SERVICE_URL = process.env.AI_SERVICE_URL || "https://mommap-ai.onrender.com/api/v1/chat/";
         let aiResponseText = "Sorry, the AI service is currently unavailable.";
 
         try {
+          console.log(`Calling AI service for user ${user_id} with message: ${message}`);
           const response = await axios.post(
-            `${AI_SERVICE_URL}?user_id=${user_id}&message=${encodeURIComponent(message)}`,
-            formattedHistory
+            `${AI_SERVICE_URL}`,
+            aiPayload,
+            { headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' } }
           );
+          console.log("AI Response data:", response.data);
           aiResponseText = response.data?.response || aiResponseText;
         } catch (error) {
           console.error("AI service error in WebSocket:", error.message);
+          if (error.response) {
+            console.error("AI service error details:", error.response.data);
+          }
         }
 
         // Save AI message
@@ -191,6 +207,9 @@ io.on("connection", async (socket) => {
           sender_role: "ai",
           timestamp: new Date(),
         });
+
+        // Stop typing indicator
+        io.to(conversation.conversation_id).emit("typing_stopped", { conversationId: conversation.conversation_id });
 
         // Broadcast AI response to room
         io.to(conversation.conversation_id).emit("new_message", aiMessage);

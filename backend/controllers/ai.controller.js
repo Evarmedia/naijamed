@@ -94,12 +94,12 @@ const patientAssistant = async (req, res) => {
 
     const user_id = req.user.user_id;
 
-    const prompt = `You are NaijaMed Health Assistant, a friendly and empathetic AI health companion designed for Nigerian patients. 
-Respond in simple, plain language that any patient can understand. Avoid medical jargon. 
-Be culturally aware of Nigerian healthcare context.
-If the question seems like an emergency, strongly advise the patient to call emergency services or go to the nearest hospital immediately.
+//     const prompt = `You are NaijaMed Health Assistant, a friendly and empathetic AI health companion designed for Nigerian patients. 
+// Respond in simple, plain language that any patient can understand. Avoid medical jargon. 
+// Be culturally aware of Nigerian healthcare context.
+// If the question seems like an emergency, strongly advise the patient to call emergency services or go to the nearest hospital immediately.
 
-Patient question: ${question}`;
+// Patient question: ${question}`;
 
     const messageHistory = await Message.findAll({
       where: { user_id },
@@ -119,7 +119,7 @@ Patient question: ${question}`;
     let aiResponse;
     try {
       const response = await axios.post(
-        `${AI_SERVICE_URL}?user_id=${user_id}&message=${encodeURIComponent(prompt)}`,
+        `${AI_SERVICE_URL}?user_id=${user_id}&message=${encodeURIComponent(question)}`,
         messageHistoryArray
       );
       aiResponse = response.data.response;

@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
+import React, { createContext, useState, useContext, useEffect, useCallback, useRef } from 'react';
 import { apiService } from '../services/api.service';
 import { socketService } from '../services/socket.service';
 import { useAuth } from './AuthContext';
@@ -11,6 +11,7 @@ export const ChatProvider = ({ children }) => {
   const [currentConversation, setCurrentConversation] = useState(null);
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
   const [mode, setMode] = useState('startup'); // startup, chat, triage
 
   const loadConversations = useCallback(async () => {
@@ -37,6 +38,7 @@ export const ChatProvider = ({ children }) => {
   const selectConversation = async (conversation) => {
     setCurrentConversation(conversation);
     setMode('chat');
+    setIsTyping(false);
     await loadMessages(conversation.conversation_id);
     socketService.joinConversation(conversation.conversation_id);
   };
@@ -50,6 +52,7 @@ export const ChatProvider = ({ children }) => {
       setCurrentConversation(newConv);
       setMessages([]);
       setMode(initialMode);
+      setIsTyping(false);
       socketService.joinConversation(newConv.conversation_id);
       return newConv;
     } catch (error) {
@@ -71,26 +74,61 @@ export const ChatProvider = ({ children }) => {
     );
   };
 
+  const currentConversationRef = useRef(currentConversation);
+
   useEffect(() => {
-    if (user) {
+    currentConversationRef.current = currentConversation;
+  }, [currentConversation]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    loadConversations();
+    const token = localStorage.getItem('token');
+    socketService.connect(token);
+
+    const handleMessage = (message) => {
+      const activeConv = currentConversationRef.current;
+      if (activeConv && String(message.conversation_id) === String(activeConv.conversation_id)) {
+        setMessages(prev => {
+          if (prev.some(m => m.message_id === message.message_id)) return prev;
+          return [...prev, message];
+        });
+      }
+    };
+
+    const handleTyping = (data) => {
+      const activeConv = currentConversationRef.current;
+      if (activeConv && String(data.conversationId) === String(activeConv.conversation_id)) {
+        setIsTyping(true);
+      }
+    };
+
+    const handleTypingStopped = (data) => {
+      const activeConv = currentConversationRef.current;
+      if (activeConv && String(data.conversationId) === String(activeConv.conversation_id)) {
+        setIsTyping(false);
+      }
+    };
+
+    const unsubscribeMsg = socketService.on('message', handleMessage);
+    const unsubscribeTyping = socketService.on('typing', handleTyping);
+    const unsubscribeTypingStopped = socketService.on('typing_stopped', handleTypingStopped);
+    
+    return () => {
+      unsubscribeMsg();
+      unsubscribeTyping();
+      unsubscribeTypingStopped();
+      socketService.disconnect();
+    };
+  }, [user]); // Only run on mount/auth change
+
+  // This effect handles list refreshing but not socket connection
+  useEffect(() => {
+    if (user && !conversations.length) {
       loadConversations();
-      const token = localStorage.getItem('token');
-      socketService.connect(token);
-
-      const handleMessage = (message) => {
-        if (currentConversation && message.conversation_id === currentConversation.conversation_id) {
-          setMessages(prev => [...prev, message]);
-        }
-      };
-
-      const unsubscribe = socketService.on('message', handleMessage);
-      
-      return () => {
-        unsubscribe();
-        socketService.disconnect();
-      };
     }
-  }, [user, currentConversation, loadConversations]);
+  }, [user, conversations.length, loadConversations]);
 
   return (
     <ChatContext.Provider value={{
@@ -98,6 +136,7 @@ export const ChatProvider = ({ children }) => {
       currentConversation,
       messages,
       loading,
+      isTyping,
       mode,
       setMode,
       selectConversation,

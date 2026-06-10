@@ -3,9 +3,10 @@ import { useChat } from '../context/ChatContext';
 import { Send } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
+import TypingIndicator from './TypingIndicator';
 
 const ChatContent = () => {
-  const { messages, sendMessage, loading } = useChat();
+  const { messages, sendMessage, isTyping } = useChat();
   const { user } = useAuth();
   const [input, setInput] = useState('');
   const messagesEndRef = useRef(null);
@@ -16,7 +17,7 @@ const ChatContent = () => {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [messages, isTyping]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -54,6 +55,7 @@ const ChatContent = () => {
             );
           })}
         </AnimatePresence>
+        {isTyping && <TypingIndicator />}
         <div ref={messagesEndRef} />
       </div>
 

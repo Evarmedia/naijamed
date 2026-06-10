@@ -85,58 +85,58 @@ const getMessages = async (req, res) => {
 };
 
 // POST /chats/:conversationId/messages — send a message (REST)
-const sendMessage = async (req, res) => {
-  try {
-    const { conversationId } = req.params;
-    const { message, message_type = "text" } = req.body;
+// const sendMessage = async (req, res) => {
+//   try {
+//     const { conversationId } = req.params;
+//     const { message, message_type = "text" } = req.body;
 
-    if (!message) {
-      return res.status(400).json({ message: "Message content is required" });
-    }
+//     if (!message) {
+//       return res.status(400).json({ message: "Message content is required" });
+//     }
 
-    const conversation = await Conversation.findByPk(conversationId);
-    if (!conversation) {
-      return res.status(404).json({ message: "Conversation not found" });
-    }
+//     const conversation = await Conversation.findByPk(conversationId);
+//     if (!conversation) {
+//       return res.status(404).json({ message: "Conversation not found" });
+//     }
 
-    if (conversation.status === "closed") {
-      return res.status(400).json({ message: "Conversation is closed" });
-    }
+//     if (conversation.status === "closed") {
+//       return res.status(400).json({ message: "Conversation is closed" });
+//     }
 
-    // Verify access
-    if (
-      conversation.patient_id !== req.user.user_id &&
-      conversation.doctor_id !== req.user.user_id
-    ) {
-      return res.status(403).json({ message: "Access denied" });
-    }
+//     // Verify access
+//     if (
+//       conversation.patient_id !== req.user.user_id &&
+//       conversation.doctor_id !== req.user.user_id
+//     ) {
+//       return res.status(403).json({ message: "Access denied" });
+//     }
 
-    const newMessage = await Message.create({
-      message_id: `msg-${crypto.randomUUID()}`,
-      conversation_id: conversationId,
-      user_id: req.user.user_id,
-      message,
-      message_type,
-      identifier: "human",
-      sender_role: req.user.role,
-      timestamp: new Date(),
-    });
+//     const newMessage = await Message.create({
+//       message_id: `msg-${crypto.randomUUID()}`,
+//       conversation_id: conversationId,
+//       user_id: req.user.user_id,
+//       message,
+//       message_type,
+//       identifier: "human",
+//       sender_role: req.user.role,
+//       timestamp: new Date(),
+//     });
 
-    // Update conversation timestamp
-    await Conversation.update(
-      { updated_at: new Date() },
-      { where: { conversation_id: conversationId } }
-    );
+//     // Update conversation timestamp
+//     await Conversation.update(
+//       { updated_at: new Date() },
+//       { where: { conversation_id: conversationId } }
+//     );
 
-    return res.status(201).json({
-      message: "Message sent successfully",
-      data: newMessage,
-    });
-  } catch (error) {
-    console.error("Error sending message:", error);
-    return res.status(500).json({ message: "Internal server error" });
-  }
-};
+//     return res.status(201).json({
+//       message: "Message sent successfully",
+//       data: newMessage,
+//     });
+//   } catch (error) {
+//     console.error("Error sending message:", error);
+//     return res.status(500).json({ message: "Internal server error" });
+//   }
+// };
 
 // GET /chats — list user's conversations
 const listConversations = async (req, res) => {
@@ -165,6 +165,6 @@ const listConversations = async (req, res) => {
 module.exports = {
   initiateConversation,
   getMessages,
-  sendMessage,
+  // sendMessage,
   listConversations,
 };

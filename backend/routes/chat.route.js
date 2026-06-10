@@ -1,5 +1,5 @@
 const express = require('express');
-const { initiateConversation, getMessages, sendMessage, listConversations } = require('../controllers/chat.controller');
+const { initiateConversation, getMessages, listConversations } = require('../controllers/chat.controller');
 const { authMiddleware } = require('../middleware/authMiddleware');
 
 const router = express.Router();
@@ -81,39 +81,39 @@ router.post('/initiate', authMiddleware, initiateConversation);
  */
 router.get('/:conversationId/messages', authMiddleware, getMessages);
 
-/**
- * @swagger
- * /api/chats/{conversationId}/messages:
- *   post:
- *     summary: Send a message to a conversation via REST API
- *     tags: [Chat]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: conversationId
- *         required: true
- *         schema:
- *           type: string
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - message
- *             properties:
- *               message:
- *                 type: string
- *               message_type:
- *                 type: string
- *                 enum: [text, image]
- *                 default: text
- *     responses:
- *       201:
- *         description: Message sent successfully
- */
-router.post('/:conversationId/messages', authMiddleware, sendMessage);
+// /**
+//  * @swagger
+//  * /api/chats/{conversationId}/messages:
+//  *   post:
+//  *     summary: Send a message to a conversation via REST API
+//  *     tags: [Chat]
+//  *     security:
+//  *       - bearerAuth: []
+//  *     parameters:
+//  *       - in: path
+//  *         name: conversationId
+//  *         required: true
+//  *         schema:
+//  *           type: string
+//  *     requestBody:
+//  *       required: true
+//  *       content:
+//  *         application/json:
+//  *           schema:
+//  *             type: object
+//  *             required:
+//  *               - message
+//  *             properties:
+//  *               message:
+//  *                 type: string
+//  *               message_type:
+//  *                 type: string
+//  *                 enum: [text, image]
+//  *                 default: text
+//  *     responses:
+//  *       201:
+//  *         description: Message sent successfully
+//  */
+// router.post('/:conversationId/messages', authMiddleware, sendMessage);
 
 module.exports = router;

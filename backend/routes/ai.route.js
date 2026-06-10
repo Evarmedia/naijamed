@@ -72,30 +72,30 @@ router.post('/triage', authMiddleware, triage);
  */
 router.post('/patient-assistant', authMiddleware, patientAssistant);
 
-/**
- * @swagger
- * /api/ai/doctor-assistant:
- *   post:
- *     summary: Doctor-facing clinical AI assistant
- *     tags: [AI]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - question
- *             properties:
- *               question:
- *                 type: string
- *                 example: "What is the recommended first-line treatment for uncomplicated falciparum malaria?"
- *     responses:
- *       200:
- *         description: Response generated in clinical terminology
- */
-router.post('/doctor-assistant', authMiddleware, doctorAssistant);
+// /**
+//  * @swagger
+//  * /api/ai/doctor-assistant:
+//  *   post:
+//  *     summary: Doctor-facing clinical AI assistant
+//  *     tags: [AI]
+//  *     security:
+//  *       - bearerAuth: []
+//  *     requestBody:
+//  *       required: true
+//  *       content:
+//  *         application/json:
+//  *           schema:
+//  *             type: object
+//  *             required:
+//  *               - question
+//  *             properties:
+//  *               question:
+//  *                 type: string
+//  *                 example: "What is the recommended first-line treatment for uncomplicated falciparum malaria?"
+//  *     responses:
+//  *       200:
+//  *         description: Response generated in clinical terminology
+//  */
+// router.post('/doctor-assistant', authMiddleware, doctorAssistant);
 
 module.exports = router;
