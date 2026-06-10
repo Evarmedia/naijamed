@@ -31,7 +31,7 @@ const router = express.Router();
 
 /**
  * @swagger
- * /api/users/patients/{id}:
+ * /api/users/patients/{user_id}:
  *   get:
  *     summary: Get patient profile by ID
  *     tags: [Patients]
@@ -39,22 +39,22 @@ const router = express.Router();
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
- *         name: id
+ *         name: user_id
  *         schema:
  *           type: string
  *         required: true
- *         description: Patient ID
+ *         description: User ID for the patient
  *     responses:
  *       200:
  *         description: Patient profile data
  *       404:
  *         description: Patient not found
  */
-router.get('/patients/:id', authMiddleware, getPatientById);
+router.get('/patients/:user_id', authMiddleware, getPatientById);
 
 /**
  * @swagger
- * /api/users/patients/{id}/profile:
+ * /api/users/patients/{user_id}/profile:
  *   put:
  *     summary: Update patient profile
  *     tags: [Patients]
@@ -62,11 +62,11 @@ router.get('/patients/:id', authMiddleware, getPatientById);
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
- *         name: id
+ *         name: user_id
  *         schema:
  *           type: string
  *         required: true
- *         description: Patient ID
+ *         description: User ID for the patient
  *     requestBody:
  *       required: true
  *       content:
@@ -109,11 +109,11 @@ router.get('/patients/:id', authMiddleware, getPatientById);
  *       200:
  *         description: Profile updated successfully
  */
-router.put('/patients/:id/profile', authMiddleware, auditLogger('UPDATE', 'patient'), updatePatientProfile);
+router.put('/patients/:user_id/profile', authMiddleware, auditLogger('UPDATE', 'patient'), updatePatientProfile);
 
 /**
  * @swagger
- * /api/users/patients/{id}/photo:
+ * /api/users/patients/{user_id}/photo:
  *   post:
  *     summary: Upload patient profile photo
  *     tags: [Patients]
@@ -121,7 +121,7 @@ router.put('/patients/:id/profile', authMiddleware, auditLogger('UPDATE', 'patie
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
- *         name: id
+ *         name: user_id
  *         schema:
  *           type: string
  *         required: true
@@ -139,11 +139,11 @@ router.put('/patients/:id/profile', authMiddleware, auditLogger('UPDATE', 'patie
  *       200:
  *         description: Photo uploaded successfully
  */
-router.post('/patients/:id/photo', authMiddleware, upload.single('photo'), auditLogger('UPLOAD_PHOTO', 'patient'), uploadPatientPhoto);
+router.post('/patients/:user_id/photo', authMiddleware, upload.single('photo'), auditLogger('UPLOAD_PHOTO', 'patient'), uploadPatientPhoto);
 
 /**
  * @swagger
- * /api/users/doctors/{id}:
+ * /api/users/doctors/{user_id}:
  *   get:
  *     summary: Get doctor profile by ID
  *     tags: [Doctors]
@@ -151,7 +151,7 @@ router.post('/patients/:id/photo', authMiddleware, upload.single('photo'), audit
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
- *         name: id
+ *         name: user_id
  *         schema:
  *           type: string
  *         required: true
@@ -159,11 +159,11 @@ router.post('/patients/:id/photo', authMiddleware, upload.single('photo'), audit
  *       200:
  *         description: Doctor profile data
  */
-router.get('/doctors/:id', authMiddleware, getDoctorById);
+router.get('/doctors/:user_id', authMiddleware, getDoctorById);
 
 /**
  * @swagger
- * /api/users/doctors/{id}/profile:
+ * /api/users/doctors/{user_id}/profile:
  *   put:
  *     summary: Update doctor profile
  *     tags: [Doctors]
@@ -171,7 +171,7 @@ router.get('/doctors/:id', authMiddleware, getDoctorById);
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
- *         name: id
+ *         name: user_id
  *         schema:
  *           type: string
  *         required: true
@@ -194,11 +194,11 @@ router.get('/doctors/:id', authMiddleware, getDoctorById);
  *       200:
  *         description: Doctor Profile updated successfully
  */
-router.put('/doctors/:id/profile', authMiddleware, auditLogger('UPDATE', 'doctor'), updateDoctorProfile);
+router.put('/doctors/:user_id/profile', authMiddleware, auditLogger('UPDATE', 'doctor'), updateDoctorProfile);
 
 /**
  * @swagger
- * /api/users/doctors/{id}/photo:
+ * /api/users/doctors/{user_id}/photo:
  *   post:
  *     summary: Upload doctor profile photo
  *     tags: [Doctors]
@@ -206,7 +206,7 @@ router.put('/doctors/:id/profile', authMiddleware, auditLogger('UPDATE', 'doctor
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
- *         name: id
+ *         name: user_id
  *         schema:
  *           type: string
  *         required: true
@@ -224,11 +224,11 @@ router.put('/doctors/:id/profile', authMiddleware, auditLogger('UPDATE', 'doctor
  *       200:
  *         description: Photo uploaded successfully
  */
-router.post('/doctors/:id/photo', authMiddleware, upload.single('photo'), auditLogger('UPLOAD_PHOTO', 'doctor'), uploadDoctorPhoto);
+router.post('/doctors/:user_id/photo', authMiddleware, upload.single('photo'), auditLogger('UPLOAD_PHOTO', 'doctor'), uploadDoctorPhoto);
 
 /**
  * @swagger
- * /api/users/patients/{id}/history:
+ * /api/users/patients/{user_id}/history:
  *   get:
  *     summary: Get patient consultation history
  *     tags: [Patients]
@@ -236,7 +236,7 @@ router.post('/doctors/:id/photo', authMiddleware, upload.single('photo'), auditL
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
- *         name: id
+ *         name: user_id
  *         schema:
  *           type: string
  *         required: true
@@ -249,11 +249,11 @@ router.post('/doctors/:id/photo', authMiddleware, upload.single('photo'), auditL
  *       200:
  *         description: Patient history retrieved
  */
-router.get('/patients/:id/history', authMiddleware, getPatientHistory);
+router.get('/patients/:user_id/history', authMiddleware, getPatientHistory);
 
 /**
  * @swagger
- * /api/users/doctors/{id}/caselog:
+ * /api/users/doctors/{user_id}/caselog:
  *   get:
  *     summary: Get doctor case log history
  *     tags: [Doctors]
@@ -261,7 +261,7 @@ router.get('/patients/:id/history', authMiddleware, getPatientHistory);
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
- *         name: id
+ *         name: user_id
  *         schema:
  *           type: string
  *         required: true
@@ -269,6 +269,6 @@ router.get('/patients/:id/history', authMiddleware, getPatientHistory);
  *       200:
  *         description: Doctor caselog retrieved
  */
-router.get('/doctors/:id/caselog', authMiddleware, getDoctorCaseLog);
+router.get('/doctors/:user_id/caselog', authMiddleware, getDoctorCaseLog);
 
 module.exports = router;
