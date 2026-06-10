@@ -26,15 +26,15 @@ services:
     environment:
       - NODE_ENV=development
       - PORT=3005
-      - DATABASE_URL={DATABASE_URL}
-      - JWT_SECRET={JWT_SECRET}
-      - JWT_EXPIRATION=1h
-      - EMAIL_HOST={EMAIL_HOST}
-      - EMAIL_PORT={EMAIL_PORT}
-      - EMAIL_USER={EMAIL_USER}
-      - EMAIL_PASS={EMAIL_PASS}
-      - EMAIL_FROM={EMAIL_FROM}
-      - GROQ_API_KEY={GROQ_API_KEY}
+      - DATABASE_URL=${DATABASE_URL}
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRATION=${JWT_EXPIRATION}
+      - EMAIL_HOST=${EMAIL_HOST}
+      - EMAIL_PORT=${EMAIL_PORT}
+      - EMAIL_USER=${EMAIL_USER}
+      - EMAIL_PASS=${EMAIL_PASS}
+      - EMAIL_FROM=${EMAIL_FROM}
+      - GROQ_API_KEY=${GROQ_API_KEY}
     ports:
       - "3005:3005"
     depends_on:
