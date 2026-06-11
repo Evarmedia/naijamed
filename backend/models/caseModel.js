@@ -11,11 +11,11 @@ Case.init(
       allowNull: false,
       defaultValue: () => `case-${crypto.randomUUID()}`,
     },
-    patient_id: {
+    patient_user_id: {
       type: DataTypes.STRING,
       allowNull: false,
     },
-    doctor_id: {
+    doctor_user_id: {
       type: DataTypes.STRING,
       allowNull: true,
     },
