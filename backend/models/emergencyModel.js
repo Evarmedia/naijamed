@@ -11,7 +11,7 @@ EmergencyLog.init(
       allowNull: false,
       defaultValue: () => `emg-${crypto.randomUUID()}`,
     },
-    patient_id: {
+    patient_user_id: {
       type: DataTypes.STRING,
       allowNull: false,
     },

@@ -116,15 +116,23 @@ const patientAssistant = async (req, res) => {
       created_at: msg.created_at,
     }));
 
+    const payload = {
+      user_id,
+      message: question,
+      chat_history: messageHistoryArray
+    }
+
     let aiResponse;
     try {
       const response = await axios.post(
-        `${AI_SERVICE_URL}?user_id=${user_id}&message=${encodeURIComponent(question)}`,
-        messageHistoryArray
+        `${AI_SERVICE_URL}`,
+        payload
       );
       aiResponse = response.data.response;
+      console.log("ai response from endpoint", response.data)
     } catch (apiError) {
       console.error("AI service error:", apiError.message);
+      console.error("Full error", apiError)
       return res.status(503).json({ message: "AI service temporarily unavailable" });
     }
 

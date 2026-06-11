@@ -9,6 +9,16 @@ const {
 const { Op } = require("sequelize");
 const config = require("../config/jwt");
 
+const USER_SAFE_ATTRIBUTES = {
+  exclude: [
+    "password",
+    "verification_token",
+    "verification_token_expiry",
+    "reset_password_token",
+    "reset_password_token_expiry",
+  ],
+};
+
 // Register a new user
 const register = async (req, res) => {
   try {
@@ -89,36 +99,56 @@ const register = async (req, res) => {
   }
 };
 
-// Login — supports email or phone_number
+// Login — supports email
 const login = async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    if (!password || (!email)) {
-      return res
-        .status(400)
-        .json({ message: "Email and password are required" });
+    if (!email || !password) {
+      return res.status(400).json({
+        message: "Email and password are required",
+      });
     }
 
-    // Find user by email or phone
-   
-    const user = await User.findOne({ where: { email } });
+    const user = await User.findOne({
+      where: { email },
+      include: [
+        {
+          model: Patients,
+          as: "patient",
+          required: false,
+        },
+        {
+          model: Doctors,
+          as: "doctor",
+          required: false,
+        },
+      ],
+    });
 
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({
+        message: "User not found",
+      });
     }
 
     if (!user.is_active) {
-      return res.status(403).json({ message: "Account is deactivated" });
+      return res.status(403).json({
+        message: "Account is deactivated",
+      });
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
+
     if (!isPasswordValid) {
-      return res.status(401).json({ message: "Invalid credentials" });
+      return res.status(401).json({
+        message: "Invalid credentials",
+      });
     }
 
-    // Update last login
-    await user.update({ last_login: new Date() });
+    await user.update({
+      last_login: new Date(),
+    });
 
     const token = jwt.sign(
       {
@@ -128,24 +158,29 @@ const login = async (req, res) => {
         role: user.role,
       },
       config.jwtSecret,
-      { expiresIn: config.jwtExpiration }
+      {
+        expiresIn: config.jwtExpiration,
+      }
     );
+
+    const userData = user.toJSON();
+
+    delete userData.password;
+    delete userData.verification_token;
+    delete userData.verification_token_expiry;
+    delete userData.reset_password_token;
+    delete userData.reset_password_token_expiry;
 
     return res.status(200).json({
       message: "Logged in successfully",
       token,
-      user: {
-        user_id: user.user_id,
-        first_name: user.first_name,
-        last_name: user.last_name,
-        email: user.email,
-        role: user.role,
-        is_verified: user.is_verified,
-      },
+      user: userData,
     });
   } catch (error) {
     console.error("Login error:", error);
-    return res.status(500).json({ message: "Server error" });
+    return res.status(500).json({
+      message: "Server error",
+    });
   }
 };
 

@@ -18,11 +18,11 @@ Conversation.init(
         isIn: [["patient_ai", "doctor_ai", "patient_doctor"]],
       },
     },
-    patient_id: {
+    patient_user_id: {
       type: DataTypes.STRING,
       allowNull: true,
     },
-    doctor_id: {
+    doctor_user_id: {
       type: DataTypes.STRING,
       allowNull: true,
     },

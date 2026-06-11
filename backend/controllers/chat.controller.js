@@ -4,7 +4,7 @@ const crypto = require("crypto");
 // POST /chats/initiate — create a new conversation
 const initiateConversation = async (req, res) => {
   try {
-    const { type, patient_id, doctor_id, case_id } = req.body;
+    const { type, patient_user_id, doctor_user_id, case_id } = req.body;
 
     if (!type) {
       return res.status(400).json({ message: "Conversation type is required" });
@@ -18,8 +18,8 @@ const initiateConversation = async (req, res) => {
 
     const conversation = await Conversation.create({
       type,
-      patient_id: patient_id || req.user.user_id,
-      doctor_id: doctor_id || null,
+      patient_user_id: patient_user_id || req.user.user_id,
+      doctor_user_id: doctor_user_id || null,
       case_id: case_id || null,
     });
 
@@ -46,8 +46,8 @@ const getMessages = async (req, res) => {
 
     // Verify access — user must be a participant
     if (
-      conversation.patient_id !== req.user.user_id &&
-      conversation.doctor_id !== req.user.user_id
+      conversation.patient_user_id !== req.user.user_id &&
+      conversation.doctor_user_id !== req.user.user_id
     ) {
       return res.status(403).json({ message: "Access denied" });
     }
@@ -146,7 +146,7 @@ const listConversations = async (req, res) => {
 
     const conversations = await Conversation.findAll({
       where: {
-        [Op.or]: [{ patient_id: userId }, { doctor_id: userId }],
+        [Op.or]: [{ patient_user_id: userId }, { doctor_user_id: userId }],
       },
       include: [
         { model: User, as: "patient", attributes: ["user_id", "first_name", "last_name"] },
