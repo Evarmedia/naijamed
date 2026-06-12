@@ -1,0 +1,4 @@
+node_modules/
+.env
+newjson.js
+docker-compose.yml

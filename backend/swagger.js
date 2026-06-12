@@ -6,6 +6,7 @@ const options = {
     info: {
       title: 'NAIJAMED ASSISTANT API',
       version: '1.0.0',
+      description: 'API Documentation for the NaijaMed Assistant backend'
     },
     components: {
       securitySchemes: {

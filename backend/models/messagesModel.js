@@ -1,6 +1,6 @@
 const { Model, DataTypes } = require("sequelize");
 const sequelize = require("../config/db");
-const User = require("./userModel");
+const crypto = require("crypto");
 
 class Message extends Model {}
 Message.init(
@@ -9,29 +9,57 @@ Message.init(
       type: DataTypes.STRING,
       primaryKey: true,
       allowNull: false,
+      defaultValue: () => `msg-${crypto.randomUUID()}`,
+    },
+    conversation_id: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
     user_id: {
       type: DataTypes.STRING,
       allowNull: false,
-      references: {
-        model: User,
-        key: "user_id",
-      },
     },
     message: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
       allowNull: false,
     },
+    message_type: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: "text",
+      validate: {
+        isIn: [["text", "image"]],
+      },
+    },
     identifier: {
-      type: DataTypes.ENUM("human", "ai"),
+      type: DataTypes.STRING,
       allowNull: false,
+      validate: {
+        isIn: [["human", "agent"]],
+      },
+    },
+    sender_role: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      validate: {
+        isIn: [["patient", "doctor", "ai"]],
+      },
     },
     timestamp: {
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
+    created_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
     is_read: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
+    is_emergency: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
     },

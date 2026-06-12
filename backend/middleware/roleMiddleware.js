@@ -1,32 +1,24 @@
-const { User, Role } = require('../models/models'); // Import your models
-
 // Role-based access control middleware
+// Uses role from JWT payload (set by authMiddleware)
 const checkRole = (...allowedRoles) => {
-  return async (req, res, next) => {
+  return (req, res, next) => {
     try {
-      // Assuming user info is stored in req.user from previous authentication middleware
-      // console.log(req.user);
-      const user = await User.findByPk(req.user.user_id, {
-        include: {
-          model: Role,
-          attributes: ['role_name'],
-        },
-      });
-
-      if (!user) {
-        return res.status(404).json({ message: 'User not found' });
+      if (!req.user) {
+        return res.status(401).json({ message: "Authentication required" });
       }
 
-      // Check if the user's role matches any of the allowed roles
-      if (!allowedRoles.includes(user.Role.role_name)) {
-        return res.status(403).json({ message: 'Forbidden: You do not have access to this resource' });
+      const userRole = req.user.role;
+
+      if (!userRole || !allowedRoles.includes(userRole)) {
+        return res.status(403).json({
+          message: "Forbidden: You do not have access to this resource",
+        });
       }
 
-      // If role matches, proceed to the next middleware
       next();
     } catch (error) {
-      console.error(error);
-      return res.status(500).json({ message: 'Server error' });
+      console.error("Role check error:", error);
+      return res.status(500).json({ message: "Server error" });
     }
   };
 };

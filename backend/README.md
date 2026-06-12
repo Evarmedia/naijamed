@@ -1,6 +1,6 @@
-# Okada_Connect Backend
+# naijamed Backend
 
-Okada_Connect Backend is the server-side component of the Okada_Connect platform, designed to handle user authentication, profile management, and more. It leverages a robust set of technologies and tools to provide a secure and efficient service.
+naijamed Backend is the server-side component of the naijamed platform, designed to handle user authentication, profile management, and more. It leverages a robust set of technologies and tools to provide a secure and efficient service.
 
 ## Technologies Used
 
@@ -40,8 +40,8 @@ npm install node-schedule # A cron-like job scheduler
 Clone the repository and install its dependencies:
 
 ```bash
-git clone https://github.com/yourusername/okada_connect.git
-cd okada_connect
+git clone https://github.com/yourusername/naijamed.git
+cd naijamed
 npm install
 ```
 
@@ -94,7 +94,7 @@ npm test
 
 ## Contributing
 
-Contributions to the Okada_Connect Backend are welcome! Please feel free to fork the repository, make changes, and submit pull requests.
+Contributions to the naijamed Backend are welcome! Please feel free to fork the repository, make changes, and submit pull requests.
 
 ## License
 
