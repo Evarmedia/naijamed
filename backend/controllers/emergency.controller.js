@@ -154,6 +154,19 @@ const declineEmergency = async (req, res) => {
       { where: { case_id } }
     );
 
+    // Notify all doctors that this emergency case is no longer active (cancelled)
+    const io = req.app.get("io");
+    if (io) {
+      const doctors = await Doctors.findAll({
+        include: [{ model: User, as: "user", attributes: ["user_id"] }],
+      });
+      doctors.forEach((doctor) => {
+        io.to(doctor.user_id).emit("emergency_case_assigned", {
+          caseId: case_id,
+        });
+      });
+    }
+
     return res.status(200).json({
       message:
         "Emergency declined. Please monitor your symptoms and seek help if needed.",
@@ -362,11 +375,51 @@ const updateEmergency = async (req, res) => {
   }
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /api/emergencies/decline-doctor/:case_id
+// Doctor declines an emergency case — they simply won't be prompted again.
+// No notification is sent to the patient.
+// ─────────────────────────────────────────────────────────────────────────────
+const declineDoctorEmergency = async (req, res) => {
+  try {
+    const { case_id } = req.params;
+    const doctor_user_id = req.user.user_id;
+
+    // Verify the doctor profile exists
+    const doctor = await Doctors.findOne({ where: { user_id: doctor_user_id } });
+    if (!doctor) {
+      return res
+        .status(403)
+        .json({ message: "Only doctors can decline emergency cases" });
+    }
+
+    // Verify the case exists and is still open
+    const emergencyCase = await Case.findOne({
+      where: { case_id, status: "open", case_type: "emergency" },
+    });
+
+    if (!emergencyCase) {
+      return res.status(404).json({
+        message: "Emergency case not found or already assigned",
+      });
+    }
+
+    return res.status(200).json({
+      message: "Emergency case declined. You will not be prompted for this case again.",
+      caseId: case_id,
+    });
+  } catch (error) {
+    console.error("Error declining emergency (doctor):", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
 module.exports = {
   triggerEmergency,
   confirmEmergency,
   declineEmergency,
   acceptEmergency,
+  declineDoctorEmergency,
   getEmergencies,
   updateEmergency,
 };

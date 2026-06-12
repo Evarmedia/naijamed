@@ -94,7 +94,7 @@ app.get("/", (req, res) => {
     console.log("Database connected successfully.");
 
     // Sync all models if needed
-    await sequelize.sync({ alter: true });
+    // await sequelize.sync({ alter: true });
 
     console.log("Database synced");
 
@@ -284,7 +284,7 @@ const callAIService = async ({ isPatient, user_id, message, chat_history }) => {
           Accept: "application/json",
           "Content-Type": "application/json",
         },
-        timeout: 10_000,
+        // timeout: 10_000,
       }
     );
 

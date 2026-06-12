@@ -4,8 +4,6 @@ import { Send } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import TypingIndicator from './TypingIndicator';
-import EmergencyModal from './EmergencyModal';
-
 const ChatContent = () => {
   const { messages, sendMessage, isTyping } = useChat();
   const { user } = useAuth();
@@ -29,9 +27,6 @@ const ChatContent = () => {
 
   return (
     <>
-      {/* Emergency modal renders as a portal-like overlay above everything */}
-      <EmergencyModal />
-
       <div className="flex-1 flex flex-col h-full bg-white relative">
         <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
           <AnimatePresence initial={false}>

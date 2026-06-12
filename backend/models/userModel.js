@@ -65,6 +65,10 @@ User.init(
       type: DataTypes.BOOLEAN,
       defaultValue: false,
     },
+    is_online: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
     verification_token: {
       type: DataTypes.STRING,
       allowNull: true,
@@ -84,6 +88,10 @@ User.init(
       type: DataTypes.DATE,
       allowNull: true,
       defaultValue: null,
+    },
+    profile_completed: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
     },
     is_active: {
       type: DataTypes.BOOLEAN,

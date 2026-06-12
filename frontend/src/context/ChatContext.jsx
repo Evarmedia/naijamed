@@ -29,8 +29,12 @@ export const ChatProvider = ({ children }) => {
   const [isTyping, setIsTyping] = useState(false);
   const [mode, setMode] = useState('startup'); // startup, chat, triage
 
-  // Emergency modal state
+  // Emergency modal state (patient side)
   const [emergencyState, setEmergencyState] = useState(INITIAL_EMERGENCY_STATE);
+  const [emergencyMinimized, setEmergencyMinimized] = useState(false);
+
+  // Doctor-side emergency notifications
+  const [doctorEmergencies, setDoctorEmergencies] = useState([]);
 
   // ── Conversations ──────────────────────────────────────────────────────────
 
@@ -91,7 +95,7 @@ export const ChatProvider = ({ children }) => {
     );
   };
 
-  // ── Emergency handlers ─────────────────────────────────────────────────────
+  // ── Emergency handlers (patient side) ──────────────────────────────────────
 
   /**
    * Called when patient clicks "Yes, connect me to a doctor".
@@ -120,6 +124,7 @@ export const ChatProvider = ({ children }) => {
     const caseId = emergencyState.caseId;
     // Reset state immediately for snappy UX
     setEmergencyState(INITIAL_EMERGENCY_STATE);
+    setEmergencyMinimized(false);
 
     if (caseId) {
       try {
@@ -128,6 +133,20 @@ export const ChatProvider = ({ children }) => {
         console.error('Failed to decline emergency:', error);
       }
     }
+  };
+
+  /**
+   * Minimize the "Finding Doctor" screen — patient can continue using the app.
+   */
+  const minimizeEmergency = () => {
+    setEmergencyMinimized(true);
+  };
+
+  /**
+   * Expand the minimized emergency modal back to full view.
+   */
+  const expandEmergency = () => {
+    setEmergencyMinimized(false);
   };
 
   /**
@@ -153,6 +172,35 @@ export const ChatProvider = ({ children }) => {
     }
 
     setEmergencyState(INITIAL_EMERGENCY_STATE);
+    setEmergencyMinimized(false);
+  };
+
+  // ── Doctor emergency handlers ──────────────────────────────────────────────
+
+  /**
+   * Doctor accepts an emergency case.
+   */
+  const acceptDoctorEmergency = async (caseId) => {
+    try {
+      await apiService.acceptEmergency(caseId);
+      // Remove from local notifications
+      setDoctorEmergencies(prev => prev.filter(e => e.caseId !== caseId));
+    } catch (error) {
+      console.error('Failed to accept emergency:', error);
+    }
+  };
+
+  /**
+   * Doctor declines an emergency case — won't be prompted again.
+   */
+  const declineDoctorEmergency = async (caseId) => {
+    try {
+      await apiService.declineDoctorEmergency(caseId);
+      // Remove from local notifications
+      setDoctorEmergencies(prev => prev.filter(e => e.caseId !== caseId));
+    } catch (error) {
+      console.error('Failed to decline emergency:', error);
+    }
   };
 
   // ── Socket event subscriptions ─────────────────────────────────────────────
@@ -209,18 +257,44 @@ export const ChatProvider = ({ children }) => {
         doctorName: null,
         doctorConversationId: null,
       });
+      setEmergencyMinimized(false);
     };
 
     // A doctor accepted → update modal to 'connected' state
     const handleEmergencyAccepted = (data) => {
       setEmergencyState(prev => ({
         ...prev,
+        active: true,
         phase: 'connected',
         doctorName: data.doctorName,
         doctorConversationId: data.conversationId,
       }));
 
+      // Auto-expand if minimized so patient sees the good news
+      setEmergencyMinimized(false);
+
       // Refresh conversations so the new patient-doctor one appears in the sidebar
+      loadConversations();
+    };
+
+    // Doctor-side: new emergency case available to accept
+    const handleNewEmergencyCase = (data) => {
+      setDoctorEmergencies(prev => {
+        // Avoid duplicates
+        if (prev.some(e => e.caseId === data.caseId)) return prev;
+        return [...prev, {
+          caseId: data.caseId,
+          emergencyId: data.emergencyId,
+          patientName: data.patientName,
+          diagnosis: data.diagnosis,
+        }];
+      });
+    };
+
+    // Doctor-side: case was assigned (to this doctor or another) — remove from notifications
+    const handleEmergencyCaseAssigned = (data) => {
+      setDoctorEmergencies(prev => prev.filter(e => e.caseId !== data.caseId));
+      // Reload conversations so the new patient-doctor one appears
       loadConversations();
     };
 
@@ -229,6 +303,8 @@ export const ChatProvider = ({ children }) => {
     const unsubscribeTypingStopped = socketService.on('typing_stopped', handleTypingStopped);
     const unsubscribeEmergencyDetected = socketService.on('emergency_detected', handleEmergencyDetected);
     const unsubscribeEmergencyAccepted = socketService.on('emergency_accepted', handleEmergencyAccepted);
+    const unsubscribeNewEmergencyCase = socketService.on('new_emergency_case', handleNewEmergencyCase);
+    const unsubscribeEmergencyCaseAssigned = socketService.on('emergency_case_assigned', handleEmergencyCaseAssigned);
 
     return () => {
       unsubscribeMsg();
@@ -236,6 +312,8 @@ export const ChatProvider = ({ children }) => {
       unsubscribeTypingStopped();
       unsubscribeEmergencyDetected();
       unsubscribeEmergencyAccepted();
+      unsubscribeNewEmergencyCase();
+      unsubscribeEmergencyCaseAssigned();
       socketService.disconnect();
     };
   }, [user]);
@@ -260,11 +338,18 @@ export const ChatProvider = ({ children }) => {
       startNewChat,
       sendMessage,
       refreshConversations: loadConversations,
-      // Emergency
+      // Emergency (patient side)
       emergencyState,
+      emergencyMinimized,
       confirmEmergency,
       dismissEmergency,
+      minimizeEmergency,
+      expandEmergency,
       openEmergencyConversation,
+      // Emergency (doctor side)
+      doctorEmergencies,
+      acceptDoctorEmergency,
+      declineDoctorEmergency,
     }}>
       {children}
     </ChatContext.Provider>

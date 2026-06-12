@@ -137,6 +137,12 @@ const login = async (req, res) => {
         message: "Account is deactivated",
       });
     }
+// uncomment in production
+    // if (!user.is_verified) {
+    //   return res.status(403).json({
+    //     message: "Account not verified. Please verify your email before logging in.",
+    //   });
+    // }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
 
@@ -171,8 +177,14 @@ const login = async (req, res) => {
     delete userData.reset_password_token;
     delete userData.reset_password_token_expiry;
 
+    const loginMessage = user.profile_completed
+      ? "Logged in successfully"
+      : "Logged in successfully, please update your profile";
+
+    await user.update({ is_online: true });
+
     return res.status(200).json({
-      message: "Logged in successfully",
+      message: loginMessage,
       token,
       user: userData,
     });

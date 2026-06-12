@@ -4,6 +4,7 @@ const {
   confirmEmergency,
   declineEmergency,
   acceptEmergency,
+  declineDoctorEmergency,
   getEmergencies,
   updateEmergency,
 } = require('../controllers/emergency.controller');
@@ -110,6 +111,26 @@ router.post('/decline/:case_id', authMiddleware, declineEmergency);
  *         description: Case accepted, patient-doctor conversation created
  */
 router.post('/accept/:case_id', authMiddleware, auditLogger('ACCEPT', 'emergency'), acceptEmergency);
+
+/**
+ * @swagger
+ * /api/emergencies/decline-doctor/{case_id}:
+ *   post:
+ *     summary: Doctor declines an emergency case (won't be prompted again)
+ *     tags: [Emergencies]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: case_id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Case declined by doctor
+ */
+router.post('/decline-doctor/:case_id', authMiddleware, declineDoctorEmergency);
 
 /**
  * @swagger

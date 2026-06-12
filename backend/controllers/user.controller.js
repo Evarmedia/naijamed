@@ -150,6 +150,12 @@ const updatePatientProfile = async (req, res) => {
       await updatedPatient.save();
     }
 
+    // Mark profile as completed
+    await User.update(
+      { profile_completed: true },
+      { where: { user_id: patient.user_id } }
+    );
+
     return res.status(200).json({
       message: "Patient profile updated successfully",
       patient: updatedPatient,
@@ -306,6 +312,12 @@ const updateDoctorProfile = async (req, res) => {
         },
       ],
     });
+
+    // Mark profile as completed
+    await User.update(
+      { profile_completed: true },
+      { where: { user_id: doctor.user_id } }
+    );
 
     return res.status(200).json({
       message: "Doctor profile updated successfully",

@@ -10,6 +10,9 @@ import {
   MessageSquare,
   HeartPulse,
   ShieldAlert,
+  Minimize2,
+  Maximize2,
+  Search,
 } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -144,9 +147,9 @@ const DetectedPhase = ({ diagnosis, onConfirm, onDismiss }) => (
 );
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Phase: connecting — doctors are being notified
+// Phase: connecting — doctors are being notified (with minimize button)
 // ─────────────────────────────────────────────────────────────────────────────
-const ConnectingPhase = () => (
+const ConnectingPhase = ({ onMinimize, onCancel }) => (
   <motion.div
     key="connecting"
     initial={{ opacity: 0, scale: 0.92 }}
@@ -181,6 +184,26 @@ const ConnectingPhase = () => (
     <div className="flex items-center gap-2">
       <HeartPulse className="w-4 h-4 text-red-400 animate-pulse" />
       <p className="text-red-300 text-xs">Notifying available doctors…</p>
+    </div>
+
+    <div className="flex gap-3 w-full mt-1">
+      <button
+        id="emergency-minimize-btn"
+        onClick={onMinimize}
+        className="flex-1 py-3 rounded-xl font-medium text-orange-200 text-sm tracking-wide border border-orange-400/30 hover:bg-orange-400/10 transition-all active:scale-95 flex items-center justify-center gap-2"
+      >
+        <Minimize2 className="w-4 h-4" />
+        Minimize
+      </button>
+
+      <button
+        id="emergency-cancel-search-btn"
+        onClick={onCancel}
+        className="flex-1 py-3 rounded-xl font-medium text-red-300 text-sm tracking-wide border border-red-400/30 hover:bg-red-400/10 transition-all active:scale-95 flex items-center justify-center gap-2"
+      >
+        <X className="w-4 h-4" />
+        Cancel
+      </button>
     </div>
   </motion.div>
 );
@@ -237,13 +260,59 @@ const ConnectedPhase = ({ doctorName, onOpenChat }) => (
 );
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Minimized pill — shows at bottom of screen when emergency is minimized
+// ─────────────────────────────────────────────────────────────────────────────
+const MinimizedPill = ({ phase, onExpand }) => {
+  const isConnected = phase === 'connected';
+
+  return (
+    <motion.button
+      initial={{ opacity: 0, y: 60, scale: 0.9 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: 60, scale: 0.9 }}
+      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+      onClick={onExpand}
+      className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-5 py-3 rounded-2xl shadow-2xl transition-all active:scale-95 hover:scale-105 cursor-pointer"
+      style={{
+        background: isConnected
+          ? 'linear-gradient(135deg, #10b981, #059669)'
+          : 'linear-gradient(135deg, #f97316, #ef4444)',
+        boxShadow: isConnected
+          ? '0 8px 32px rgba(16,185,129,0.5), 0 0 0 1px rgba(255,255,255,0.1)'
+          : '0 8px 32px rgba(239,68,68,0.5), 0 0 0 1px rgba(255,255,255,0.1)',
+      }}
+    >
+      {isConnected ? (
+        <>
+          <CheckCircle2 className="w-5 h-5 text-white" />
+          <span className="text-white font-bold text-sm">Doctor Found! Tap to view</span>
+        </>
+      ) : (
+        <>
+          <Search className="w-5 h-5 text-white animate-pulse" />
+          <span className="text-white font-bold text-sm">Finding a doctor…</span>
+          <span
+            className="w-2 h-2 rounded-full bg-white"
+            style={{ animation: 'pulse 1.5s ease-in-out infinite' }}
+          />
+        </>
+      )}
+      <Maximize2 className="w-4 h-4 text-white/70 ml-1" />
+    </motion.button>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Main EmergencyModal component
 // ─────────────────────────────────────────────────────────────────────────────
 const EmergencyModal = () => {
   const {
     emergencyState,
+    emergencyMinimized,
     confirmEmergency,
     dismissEmergency,
+    minimizeEmergency,
+    expandEmergency,
     openEmergencyConversation,
   } = useChat();
 
@@ -257,6 +326,12 @@ const EmergencyModal = () => {
       ? 'rgba(67, 20, 7, 0.88)'
       : 'rgba(69, 10, 10, 0.9)';
 
+  // Show minimized pill when minimized and still searching or connected
+  const showMinimizedPill = active && emergencyMinimized && (phase === 'connecting' || phase === 'connected');
+
+  // Show full modal when active and NOT minimized
+  const showFullModal = active && !emergencyMinimized;
+
   return (
     <>
       {/* Keyframe styles injected once */}
@@ -268,10 +343,22 @@ const EmergencyModal = () => {
         @keyframes spin {
           to { transform: rotate(360deg); }
         }
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.3; }
+        }
       `}</style>
 
+      {/* Minimized pill */}
       <AnimatePresence>
-        {active && (
+        {showMinimizedPill && (
+          <MinimizedPill phase={phase} onExpand={expandEmergency} />
+        )}
+      </AnimatePresence>
+
+      {/* Full modal */}
+      <AnimatePresence>
+        {showFullModal && (
           <>
             {/* Backdrop */}
             <motion.div
@@ -331,7 +418,11 @@ const EmergencyModal = () => {
                   )}
 
                   {phase === 'connecting' && (
-                    <ConnectingPhase key="connecting" />
+                    <ConnectingPhase
+                      key="connecting"
+                      onMinimize={minimizeEmergency}
+                      onCancel={dismissEmergency}
+                    />
                   )}
 
                   {phase === 'connected' && (

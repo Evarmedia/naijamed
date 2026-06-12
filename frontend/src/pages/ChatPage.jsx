@@ -3,6 +3,8 @@ import Sidebar from '../components/Sidebar';
 import StartupView from '../components/StartupView';
 import ChatContent from '../components/ChatContent';
 import TriageForm from '../components/TriageForm';
+import EmergencyModal from '../components/EmergencyModal';
+import DoctorEmergencyNotification from '../components/DoctorEmergencyNotification';
 import { ChatProvider, useChat } from '../context/ChatContext';
 import { useAuth } from '../context/AuthContext';
 import { X } from 'lucide-react';
@@ -59,6 +61,8 @@ const ChatLayout = () => {
 
   return (
     <div className="flex h-screen bg-white">
+      <EmergencyModal />
+      <DoctorEmergencyNotification />
       <Sidebar />
       
       <main className="flex-1 flex flex-col min-w-0">

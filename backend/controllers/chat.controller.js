@@ -19,7 +19,7 @@ const initiateConversation = async (req, res) => {
 
     const isDoctor = req.user.role === "doctor";
 
-    let finalPatientuser_id = patient_user_id || null;
+    let finalPatientUserId = patient_user_id || null;
     let finalDoctorUserId = doctor_user_id || null;
 
     if (type === "doctor_ai") {

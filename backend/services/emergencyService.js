@@ -24,7 +24,7 @@ const handleEmergencyDetected = async ({
   conversationId,
 }) => {
   try {
-    const diagnosis = aiData.diagnosis || null;
+    const diagnosis = aiData.case_summary || null;
 
     // 1. Create the emergency Case with enriched fields
     const emergencyCase = await Case.create({
@@ -35,7 +35,7 @@ const handleEmergencyDetected = async ({
       severity: "critical",
       requires_physical_care: true,
       triage_classification: "emergency",
-      ai_summary: aiData.response || null,
+      ai_summary: aiData.case_summary || null,
       status: "open",
     });
 

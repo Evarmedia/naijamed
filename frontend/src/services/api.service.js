@@ -60,6 +60,12 @@ export const apiService = {
   declineEmergency: (caseId) => apiClient.post(`/emergencies/decline/${caseId}`),
   // Doctor accepts a case (doctor-side, kept here for completeness)
   acceptEmergency: (caseId) => apiClient.post(`/emergencies/accept/${caseId}`),
+  // Doctor declines a case — won't be prompted again
+  declineDoctorEmergency: (caseId) => apiClient.post(`/emergencies/decline-doctor/${caseId}`),
   // Get emergency history
   getEmergencies: (params) => apiClient.get('/emergencies', { params }),
+
+  // Notifications
+  getNotifications: (userId, params) => apiClient.get(`/notifications/${userId}`, { params }),
+  markNotificationRead: (notificationId) => apiClient.put(`/notifications/${notificationId}/read`),
 };
