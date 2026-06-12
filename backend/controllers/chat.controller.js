@@ -16,10 +16,29 @@ const initiateConversation = async (req, res) => {
       });
     }
 
+    const isDoctor = req.user.role === "doctor";
+
+    let finalPatientUserId = patient_user_id || null;
+    let finalDoctorUserId = doctor_user_id || null;
+
+    if (type === "doctor_ai") {
+      finalDoctorUserId = req.user.user_id;
+    } else if (type === "patient_ai") {
+      finalPatientUserId = req.user.user_id;
+    } else if (type === "patient_doctor") {
+      if (isDoctor) {
+        finalDoctorUserId = req.user.user_id;
+        finalPatientUserId = patient_user_id || null;
+      } else {
+        finalPatientUserId = req.user.user_id;
+        finalDoctorUserId = doctor_user_id || null;
+      }
+    }
+
     const conversation = await Conversation.create({
       type,
-      patient_user_id: patient_user_id || req.user.user_id,
-      doctor_user_id: doctor_user_id || null,
+      patient_user_id: finalPatientUserId,
+      doctor_user_id: finalDoctorUserId,
       case_id: case_id || null,
     });
 

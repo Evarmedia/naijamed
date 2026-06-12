@@ -41,11 +41,14 @@ export const apiService = {
 
   // Chat
   getConversations: () => apiClient.get('/chats'),
-  initiateConversation: (type) => apiClient.post('/chats/initiate', { type }),
+  initiateConversation: (type, options = {}) => apiClient.post('/chats/initiate', { type, ...options }),
   getMessages: (conversationId, page = 1, limit = 50) =>
     apiClient.get(`/chats/${conversationId}/messages`, { params: { page, limit } }),
   sendMessage: (conversationId, message) =>
     apiClient.post(`/chats/${conversationId}/messages`, { message, message_type: 'text' }),
+
+  // Users / Doctors
+  getDoctors: () => apiClient.get('/users/doctors'),
 
   // AI
   triage: (data) => apiClient.post('/ai/triage', data),

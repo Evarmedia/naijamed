@@ -5,7 +5,7 @@ import { LogOut, Plus, MessageSquare, Stethoscope, Users } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const Sidebar = () => {
-  const { conversations, currentConversation, selectConversation, startNewChat } = useChat();
+  const { conversations, currentConversation, selectConversation, startNewChat, setMode } = useChat();
   const { user, logout } = useAuth();
 
   const getTypeIcon = (type) => {
@@ -17,11 +17,20 @@ const Sidebar = () => {
     }
   };
 
-  const getLabel = (type) => {
-    switch (type) {
+  const getLabel = (conv) => {
+    switch (conv.type) {
       case 'patient_ai': return 'AI Assistant';
       case 'doctor_ai': return 'Doctor AI';
-      case 'patient_doctor': return 'Doctor Chat';
+      case 'patient_doctor': {
+        if (user?.role === 'doctor') {
+          return conv.patient
+            ? `Patient: ${conv.patient.first_name} ${conv.patient.last_name}`
+            : 'Patient Chat';
+        }
+        return conv.doctor
+          ? `Dr. ${conv.doctor.first_name} ${conv.doctor.last_name}`
+          : 'Doctor Chat';
+      }
       default: return 'Chat';
     }
   };
@@ -31,7 +40,7 @@ const Sidebar = () => {
       <div className="p-4 border-b border-gray-800 flex items-center justify-between">
         <h2 className="text-xl font-bold text-emerald-500">NaijaMed</h2>
         <button 
-          onClick={() => startNewChat('patient_ai', 'startup')}
+          onClick={() => setMode('startup')}
           className="p-1.5 hover:bg-gray-800 rounded-lg transition-colors text-gray-400 hover:text-white"
           title="New Chat"
         >
@@ -69,7 +78,7 @@ const Sidebar = () => {
               <span className={currentConversation?.conversation_id === conv.conversation_id ? 'text-white' : 'text-emerald-500'}>
                 {getTypeIcon(conv.type)}
               </span>
-              <span className="truncate">{getLabel(conv.type)}</span>
+              <span className="truncate">{getLabel(conv)}</span>
             </button>
           ))
         )}

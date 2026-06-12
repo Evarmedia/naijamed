@@ -488,6 +488,25 @@ const getDoctorCaseLog = async (req, res) => {
   }
 };
 
+// GET /doctors
+const getAllDoctors = async (req, res) => {
+  try {
+    const doctors = await Doctors.findAll({
+      include: [
+        {
+          model: User,
+          as: "user",
+          attributes: USER_SAFE_ATTRIBUTES,
+        },
+      ],
+    });
+    return res.status(200).json({ doctors });
+  } catch (error) {
+    console.error("Error fetching all doctors:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
 module.exports = {
   getPatientById,
   updatePatientProfile,
@@ -497,4 +516,5 @@ module.exports = {
   uploadDoctorPhoto,
   getPatientHistory,
   getDoctorCaseLog,
+  getAllDoctors,
 };

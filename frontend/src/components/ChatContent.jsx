@@ -36,7 +36,7 @@ const ChatContent = () => {
         <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
           <AnimatePresence initial={false}>
             {messages.map((msg, i) => {
-              const isUser = msg.sender_role !== 'ai' && msg.identifier !== 'agent' && msg.identifier !== 'ai';
+              const isUser = msg.sender_role !== 'ai' && msg.identifier !== 'agent' && msg.identifier !== 'ai' && msg.user_id === user?.user_id;
               return (
                 <motion.div
                   key={msg.message_id || i}

@@ -63,10 +63,10 @@ export const ChatProvider = ({ children }) => {
     socketService.joinConversation(conversation.conversation_id);
   };
 
-  const startNewChat = async (type, initialMode = 'chat') => {
+  const startNewChat = async (type, initialMode = 'chat', options = {}) => {
     try {
       setLoading(true);
-      const response = await apiService.initiateConversation(type);
+      const response = await apiService.initiateConversation(type, options);
       const newConv = response.conversation;
       setConversations(prev => [newConv, ...prev]);
       setCurrentConversation(newConv);

@@ -8,6 +8,7 @@ const {
   uploadDoctorPhoto,
   getPatientHistory,
   getDoctorCaseLog,
+  getAllDoctors,
 } = require('../controllers/user.controller.js');
 const { authMiddleware } = require('../middleware/authMiddleware.js');
 const upload = require('../middleware/upload.js');
@@ -140,6 +141,20 @@ router.put('/patients/:user_id/profile', authMiddleware, auditLogger('UPDATE', '
  *         description: Photo uploaded successfully
  */
 router.post('/patients/:user_id/photo', authMiddleware, upload.single('photo'), auditLogger('UPLOAD_PHOTO', 'patient'), uploadPatientPhoto);
+
+/**
+ * @swagger
+ * /api/users/doctors:
+ *   get:
+ *     summary: Get all doctors
+ *     tags: [Doctors]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of all doctors
+ */
+router.get('/doctors', authMiddleware, getAllDoctors);
 
 /**
  * @swagger

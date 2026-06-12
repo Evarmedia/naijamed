@@ -4,10 +4,12 @@ import StartupView from '../components/StartupView';
 import ChatContent from '../components/ChatContent';
 import TriageForm from '../components/TriageForm';
 import { ChatProvider, useChat } from '../context/ChatContext';
+import { useAuth } from '../context/AuthContext';
 import { X } from 'lucide-react';
 
 const ChatLayout = () => {
   const { mode, currentConversation, setMode } = useChat();
+  const { user } = useAuth();
 
   const renderContent = () => {
     switch (mode) {
@@ -22,11 +24,31 @@ const ChatLayout = () => {
     if (mode === 'startup') return { title: 'Start a conversation', subtitle: 'Select a chat or start a new one' };
     if (mode === 'triage') return { title: 'Medical Triage', subtitle: 'Describe your symptoms for assessment' };
     
+    if (currentConversation?.type === 'patient_doctor') {
+      if (user?.role === 'doctor') {
+        const name = currentConversation.patient
+          ? `${currentConversation.patient.first_name} ${currentConversation.patient.last_name}`
+          : 'Patient';
+        return {
+          title: `Chat with ${name}`,
+          subtitle: `Consultation chat started on ${new Date(currentConversation.created_at).toLocaleDateString()}`
+        };
+      } else {
+        const name = currentConversation.doctor
+          ? `Dr. ${currentConversation.doctor.first_name} ${currentConversation.doctor.last_name}`
+          : 'Doctor';
+        return {
+          title: `Chat with ${name}`,
+          subtitle: `Consultation chat started on ${new Date(currentConversation.created_at).toLocaleDateString()}`
+        };
+      }
+    }
+
     const typeLabels = {
       'patient_ai': 'AI Assistant',
-      'doctor_ai': 'Doctor AI',
-      'patient_doctor': 'Doctor Chat'
+      'doctor_ai': 'Doctor AI'
     };
+
     return { 
       title: typeLabels[currentConversation?.type] || 'Chat', 
       subtitle: currentConversation ? `Created on ${new Date(currentConversation.created_at).toLocaleDateString()}` : '' 
