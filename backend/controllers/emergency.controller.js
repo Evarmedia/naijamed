@@ -14,17 +14,17 @@ const { notifyDoctorsOfEmergency } = require("../services/emergencyService");
 // ─────────────────────────────────────────────────────────────────────────────
 const triggerEmergency = async (req, res) => {
   try {
-    const { patient_id, location, latitude, longitude, case_id } = req.body;
+    const { location, latitude, longitude, case_id } = req.body;
 
-    const userId = patient_id || req.user.user_id;
+    const user_id = req.user.user_id;
 
-    const user = await User.findByPk(userId);
+    const user = await User.findByPk(user_id);
     if (!user) {
-      return res.status(404).json({ message: "Patient not found" });
+      return res.status(404).json({ message: "User not found" });
     }
 
     const emergency = await EmergencyLog.create({
-      patient_user_id: userId,
+      patient_user_id: user_id,
       case_id: case_id || null,
       location: location || null,
       latitude: latitude || null,

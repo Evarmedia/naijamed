@@ -34,7 +34,7 @@ const router = express.Router();
  *           schema:
  *             type: object
  *             properties:
- *               patient_id:
+ *               patient_user_id:
  *                 type: string
  *               location:
  *                 type: string

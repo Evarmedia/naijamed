@@ -5,30 +5,30 @@ const { Op } = require("sequelize");
 // POST /cases — create a new case
 const createCase = async (req, res) => {
   try {
-    const { patient_id, symptoms, triage_classification, ai_summary, doctor_id, notes } = req.body;
+    const { patient_user_id, symptoms, triage_classification, ai_summary, doctor_user_id, notes } = req.body;
 
-    if (!patient_id) {
+    if (!patient_user_id) {
       return res.status(400).json({ message: "patient_id is required" });
     }
 
-    const patient = await Patients.findByPk(patient_id);
+    const patient = await Patients.findByPk(patient_user_id);
     if (!patient) {
       return res.status(404).json({ message: "Patient not found" });
     }
 
     const newCase = await Case.create({
-      patient_id,
-      doctor_id: doctor_id || null,
+      patient_user_id,
+      doctor_user_id: doctor_user_id || null,
       symptoms,
       triage_classification: triage_classification || null,
       ai_summary: ai_summary || null,
       notes: notes || null,
-      status: doctor_id ? "assigned" : "open",
+      status: doctor_user_id ? "assigned" : "open",
     });
 
     // If doctor assigned, notify them
-    if (doctor_id) {
-      const doctor = await Doctors.findByPk(doctor_id);
+    if (doctor_user_id) {
+      const doctor = await Doctors.findByPk(doctor_user_id);
       if (doctor) {
         await createNotification(
           doctor.user_id,

@@ -1,5 +1,5 @@
 const express = require('express');
-const { initiateConversation, getMessages, listConversations } = require('../controllers/chat.controller');
+const { initiateConversation, getMessages, listConversations, deleteConversation, clearAllConversations } = require('../controllers/chat.controller');
 const { authMiddleware } = require('../middleware/authMiddleware');
 
 const router = express.Router();
@@ -45,9 +45,9 @@ router.get('/', authMiddleware, listConversations);
  *               type:
  *                 type: string
  *                 enum: [patient_ai, doctor_ai, patient_doctor]
- *               patient_id:
+ *               patient_user_id:
  *                 type: string
- *               doctor_id:
+ *               doctor_user_id:
  *                 type: string
  *               case_id:
  *                 type: string
@@ -59,7 +59,7 @@ router.post('/initiate', authMiddleware, initiateConversation);
 
 /**
  * @swagger
- * /api/chats/{conversationId}/messages:
+ * /api/chats/{conversation_id}/messages:
  *   get:
  *     summary: Get messages for a conversation
  *     tags: [Chat]
@@ -67,7 +67,7 @@ router.post('/initiate', authMiddleware, initiateConversation);
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
- *         name: conversationId
+ *         name: conversation_id
  *         required: true
  *         schema:
  *           type: string
@@ -79,7 +79,7 @@ router.post('/initiate', authMiddleware, initiateConversation);
  *       200:
  *         description: List of messages
  */
-router.get('/:conversationId/messages', authMiddleware, getMessages);
+router.get('/:conversation_id/messages', authMiddleware, getMessages);
 
 // /**
 //  * @swagger
@@ -115,5 +115,39 @@ router.get('/:conversationId/messages', authMiddleware, getMessages);
 //  *         description: Message sent successfully
 //  */
 // router.post('/:conversationId/messages', authMiddleware, sendMessage);
+
+/**
+ * @swagger
+ * /api/chats/clear-all:
+ *   delete:
+ *     summary: Clear all conversations for a user
+ *     tags: [Chat]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: All conversations cleared successfully
+ */
+router.delete('/clear-all', authMiddleware, clearAllConversations);
+
+/**
+ * @swagger
+ * /api/chats/{conversation_id}:
+ *   delete:
+ *     summary: Delete a conversation
+ *     tags: [Chat]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: conversation_id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Conversation deleted successfully
+ */
+router.delete('/:conversation_id', authMiddleware, deleteConversation);
 
 module.exports = router;

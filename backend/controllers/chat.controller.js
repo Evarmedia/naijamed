@@ -1,5 +1,6 @@
 const { Conversation, Message, User } = require("../models/models");
 const crypto = require("crypto");
+const { Op } = require("sequelize");
 
 // POST /chats/initiate — create a new conversation
 const initiateConversation = async (req, res) => {
@@ -18,7 +19,7 @@ const initiateConversation = async (req, res) => {
 
     const isDoctor = req.user.role === "doctor";
 
-    let finalPatientUserId = patient_user_id || null;
+    let finalPatientuser_id = patient_user_id || null;
     let finalDoctorUserId = doctor_user_id || null;
 
     if (type === "doctor_ai") {
@@ -52,13 +53,13 @@ const initiateConversation = async (req, res) => {
   }
 };
 
-// GET /chats/:conversationId/messages
+// GET /chats/:conversation_id/messages
 const getMessages = async (req, res) => {
   try {
-    const { conversationId } = req.params;
+    const { conversation_id } = req.params;
     const { page = 1, limit = 50 } = req.query;
 
-    const conversation = await Conversation.findByPk(conversationId);
+    const conversation = await Conversation.findByPk(conversation_id);
     if (!conversation) {
       return res.status(404).json({ message: "Conversation not found" });
     }
@@ -74,7 +75,7 @@ const getMessages = async (req, res) => {
     const offset = (parseInt(page) - 1) * parseInt(limit);
 
     const { count, rows: messages } = await Message.findAndCountAll({
-      where: { conversation_id: conversationId },
+      where: { conversation_id },
       include: [
         {
           model: User,
@@ -88,7 +89,7 @@ const getMessages = async (req, res) => {
     });
 
     return res.status(200).json({
-      conversation_id: conversationId,
+      conversation_id: conversation_id,
       messages,
       pagination: {
         total: count,
@@ -103,17 +104,17 @@ const getMessages = async (req, res) => {
   }
 };
 
-// POST /chats/:conversationId/messages — send a message (REST)
+// POST /chats/:conversation_id/messages — send a message (REST)
 // const sendMessage = async (req, res) => {
 //   try {
-//     const { conversationId } = req.params;
+//     const { conversation_id } = req.params;
 //     const { message, message_type = "text" } = req.body;
 
 //     if (!message) {
 //       return res.status(400).json({ message: "Message content is required" });
 //     }
 
-//     const conversation = await Conversation.findByPk(conversationId);
+//     const conversation = await Conversation.findByPk(conversation_id);
 //     if (!conversation) {
 //       return res.status(404).json({ message: "Conversation not found" });
 //     }
@@ -132,7 +133,7 @@ const getMessages = async (req, res) => {
 
 //     const newMessage = await Message.create({
 //       message_id: `msg-${crypto.randomUUID()}`,
-//       conversation_id: conversationId,
+//       conversation_id: conversation_id,
 //       user_id: req.user.user_id,
 //       message,
 //       message_type,
@@ -144,7 +145,7 @@ const getMessages = async (req, res) => {
 //     // Update conversation timestamp
 //     await Conversation.update(
 //       { updated_at: new Date() },
-//       { where: { conversation_id: conversationId } }
+//       { where: { conversation_id: conversation_id } }
 //     );
 
 //     return res.status(201).json({
@@ -160,12 +161,11 @@ const getMessages = async (req, res) => {
 // GET /chats — list user's conversations
 const listConversations = async (req, res) => {
   try {
-    const userId = req.user.user_id;
-    const { Op } = require("sequelize");
+    const user_id = req.user.user_id;
 
     const conversations = await Conversation.findAll({
       where: {
-        [Op.or]: [{ patient_user_id: userId }, { doctor_user_id: userId }],
+        [Op.or]: [{ patient_user_id: user_id }, { doctor_user_id: user_id }],
       },
       include: [
         { model: User, as: "patient", attributes: ["user_id", "first_name", "last_name"] },
@@ -181,9 +181,65 @@ const listConversations = async (req, res) => {
   }
 };
 
+// DELETE /chat/clear-all - Clear all conversations for a user
+const clearAllConversations = async (req, res) => {
+  try {
+    const user_id = req.user.user_id;
+
+    const conversations = await Conversation.findAll({
+      where: {
+        [Op.or]: [{ patient_user_id: user_id }, { doctor_user_id: user_id }],
+      },
+    });
+
+    if (!conversations) {
+      return res.status(404).json({ message: "No conversations found" });
+    }
+
+    await Conversation.destroy({
+      where: {
+        [Op.or]: [{ patient_user_id: user_id }, { doctor_user_id: user_id }],
+      },
+    });
+
+    return res.status(200).json({ message: "All conversations cleared successfully" });
+  } catch (error) {
+    console.error("Error clearing conversations:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+}
+
+// DELETE /chat/:conversation_id - Delete a user's conversation
+const deleteConversation = async (req, res) => {
+  try {
+    const { conversation_id } = req.params;
+    const user_id = req.user.user_id;
+
+    const conversation = await Conversation.findByPk(conversation_id);
+    if (!conversation) {
+      return res.status(404).json({ message: "Conversation not found oo" });
+    }
+
+    if (
+      conversation.patient_user_id !== user_id &&
+      conversation.doctor_user_id !== user_id
+    ) {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    await conversation.destroy();
+    return res.status(200).json({ message: "Conversation deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting conversation:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+}
+
 module.exports = {
   initiateConversation,
   getMessages,
   // sendMessage,
   listConversations,
+  deleteConversation,
+  clearAllConversations,
 };
