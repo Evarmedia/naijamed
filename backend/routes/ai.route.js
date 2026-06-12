@@ -44,7 +44,7 @@ const router = express.Router();
  *       200:
  *         description: Triage assessment success
  */
-router.post('/triage', authMiddleware, triage);
+router.post('/symptom-assessment', authMiddleware, triage);
 
 /**
  * @swagger

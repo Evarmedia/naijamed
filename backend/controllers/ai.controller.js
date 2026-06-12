@@ -5,7 +5,7 @@ const crypto = require("crypto");
 const AI_SERVICE_URL =
   process.env.AI_SERVICE_URL || "https://mommap-ai.onrender.com/api/v1/chat/";
 
-// POST /ai/triage — AI triage assessment
+// POST /ai/symptom-assessment — AI triage assessment
 const triage = async (req, res) => {
   try {
     const { symptoms, duration, severity, associated_symptoms } = req.body;
