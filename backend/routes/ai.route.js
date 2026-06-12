@@ -13,7 +13,7 @@ const router = express.Router();
 
 /**
  * @swagger
- * /api/ai/triage:
+ * /api/ai//symptom-assessment:
  *   post:
  *     summary: Generate a medical triage assessment
  *     tags: [AI]
