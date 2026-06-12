@@ -23,6 +23,31 @@ Case.init(
       type: DataTypes.TEXT,
       allowNull: true,
     },
+    // AI-inferred diagnosis (populated from is_emergency AI response)
+    diagnosis: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    // Type of case: general, emergency, or follow_up
+    case_type: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+      defaultValue: "general",
+    },
+    // Severity level of the case
+    severity: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      validate: {
+        isIn: [["low", "medium", "high", "critical"]],
+      },
+    },
+    // Whether in-person physical care is required
+    requires_physical_care: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
     triage_classification: {
       type: DataTypes.STRING,
       allowNull: true,

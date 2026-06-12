@@ -25,7 +25,7 @@ services:
     restart: always
     environment:
       - NODE_ENV=development
-      - PORT=3005
+      - PORT=3055
       - DATABASE_URL=${DATABASE_URL}
       - JWT_SECRET=${JWT_SECRET}
       - JWT_EXPIRATION=${JWT_EXPIRATION}
@@ -35,7 +35,7 @@ services:
       - EMAIL_PASS=${EMAIL_PASS}
       - EMAIL_FROM=${EMAIL_FROM}
     ports:
-      - "3005:3005"
+      - "3055:3055"
     depends_on:
       - postgres
     command: sh -c "npm run migrate && npm run dev"
@@ -52,7 +52,7 @@ services:
     ports:
       - "5173:5173"
     environment:
-      - VITE_API_URL=http://localhost:3005/api
+      - VITE_API_URL=http://localhost:3055/api
     depends_on:
       - backend
     volumes:

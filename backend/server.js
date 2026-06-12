@@ -22,6 +22,9 @@ const {
 
 const { apiLimiter } = require("./middleware/rateLimiter");
 
+// Emergency service — handles auto-case creation and doctor notifications
+const { handleEmergencyDetected } = require("./services/emergencyService");
+
 // Route imports
 const authRoutes = require("./routes/auth.route");
 const userRoutes = require("./routes/user.route");
@@ -33,7 +36,7 @@ const notificationRoutes = require("./routes/notification.route");
 const emergencyRoutes = require("./routes/emergency.route");
 
 const app = express();
-const PORT = process.env.PORT || 3005;
+const PORT = process.env.PORT || 3055;
 
 const server = require("http").createServer(app);
 
@@ -44,6 +47,9 @@ const io = require("socket.io")(server, {
     credentials: true,
   },
 });
+
+// Expose io on the app so controllers can access it via req.app.get('io')
+app.set("io", io);
 
 // Middleware
 app.use(
@@ -88,7 +94,7 @@ app.get("/", (req, res) => {
     console.log("Database connected successfully.");
 
     // Sync all models if needed
-    await sequelize.sync({ alter: true });
+    // await sequelize.sync({ alter: true });
 
     console.log("Database synced");
 
@@ -102,8 +108,12 @@ app.get("/", (req, res) => {
   }
 })();
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Socket.IO Helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
 /**
- * Helper: Get user role profile
+ * Get user role profile (doctor / patient).
  */
 const getUserProfile = async (user_id) => {
   const doctor = await Doctors.findOne({ where: { user_id } });
@@ -119,31 +129,21 @@ const getUserProfile = async (user_id) => {
 };
 
 /**
- * Helper: Check if user belongs to conversation.
- * In your current structure, conversation.patient_id and conversation.doctor_id
- * are being stored as user_id values, so this checks against user_id.
+ * Check if a user is a member of a conversation.
+ * Conversation stores patient_user_id and doctor_user_id as user_id values.
  */
 const isConversationMember = (conversation, user_id) => {
-  return conversation.patient_user_id === user_id || conversation.doctor_user_id === user_id;
+  return (
+    conversation.patient_user_id === user_id ||
+    conversation.doctor_user_id === user_id
+  );
 };
 
 /**
- * Helper: Resolve or create Patient <-> Doctor conversation.
+ * Resolve or create a Patient <-> Doctor conversation.
  *
- * Expected payload:
- * For patient:
- * {
- *   conversationType: "patient_doctor",
- *   doctorUserId: "doctor-user-id",
- *   message: "Hello doctor"
- * }
- *
- * For doctor:
- * {
- *   conversationType: "patient_doctor",
- *   patientUserId: "patient-user-id",
- *   message: "Hello patient"
- * }
+ * Patient payload: { conversationType: "patient_doctor", doctorUserId, message }
+ * Doctor payload:  { conversationType: "patient_doctor", patientUserId, message }
  */
 const getOrCreatePatientDoctorConversation = async ({
   user_id,
@@ -151,6 +151,7 @@ const getOrCreatePatientDoctorConversation = async ({
   isPatient,
   doctorUserId,
   patientUserId,
+  caseId,
   transaction,
 }) => {
   let finalDoctorUserId = doctorUserId;
@@ -209,6 +210,7 @@ const getOrCreatePatientDoctorConversation = async ({
         type: "patient_doctor",
         doctor_user_id: finalDoctorUserId,
         patient_user_id: finalPatientUserId,
+        case_id: caseId || null,
         created_at: new Date(),
         updated_at: new Date(),
       },
@@ -220,7 +222,7 @@ const getOrCreatePatientDoctorConversation = async ({
 };
 
 /**
- * Helper: Fetch limited message history for AI context
+ * Fetch limited message history for AI context.
  */
 const getFormattedMessageHistory = async (conversationId, transaction) => {
   const messageHistory = await Message.findAll({
@@ -237,12 +239,13 @@ const getFormattedMessageHistory = async (conversationId, transaction) => {
     identifier: msg.identifier,
     sender_role: msg.sender_role,
     timestamp: msg.timestamp,
-    created_at: msg.created_at
+    created_at: msg.created_at,
   }));
 };
 
 /**
- * Helper: Call AI service
+ * Call the AI service and return the full response data object.
+ * Returns { response, diagnosis, treatment, is_emergency, ... } or a fallback.
  */
 const callAIService = async ({ isPatient, user_id, message, chat_history }) => {
   const PATIENT_AI_SERVICE_URL =
@@ -253,12 +256,21 @@ const callAIService = async ({ isPatient, user_id, message, chat_history }) => {
     process.env.DOC_AI_SERVICE_URL ||
     "https://mommap-ai.onrender.com/api/v1/chat/doctor";
 
-  const AI_SERVICE_URL = isPatient ? PATIENT_AI_SERVICE_URL : DOC_AI_SERVICE_URL;
+  const AI_SERVICE_URL = isPatient
+    ? PATIENT_AI_SERVICE_URL
+    : DOC_AI_SERVICE_URL;
 
-  let aiResponseText = "AI service unavailable";
+  const fallback = {
+    response: "AI service unavailable",
+    is_emergency: false,
+    diagnosis: null,
+    treatment: null,
+  };
 
   try {
-    console.log(`Calling AI service for user ${user_id} with message: ${message}`);
+    console.log(
+      `Calling AI service for user ${user_id} with message: ${message}`
+    );
 
     const response = await axios.post(
       AI_SERVICE_URL,
@@ -278,21 +290,23 @@ const callAIService = async ({ isPatient, user_id, message, chat_history }) => {
 
     console.log("AI Response data:", response.data);
 
-    aiResponseText = response.data?.response || aiResponseText;
-
-    console.log("AI Response Text:", response.data.response);
+    // Return the complete AI data object so callers can use is_emergency, diagnosis, etc.
+    return response.data || fallback;
   } catch (error) {
     console.error("AI service error in WebSocket:", error.message);
 
     if (error.response) {
       console.error("AI service error details:", error.response.data);
     }
-  }
 
-  return aiResponseText;
+    return fallback;
+  }
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
 // Real-time Chat via Socket.IO
+// ─────────────────────────────────────────────────────────────────────────────
+
 io.on("connection", async (socket) => {
   console.log("Client connected via WebSocket");
 
@@ -314,7 +328,11 @@ io.on("connection", async (socket) => {
 
   socket.data.user_id = user_id;
 
-  // Rate limiting per socket
+  // Join a personal room keyed by user_id so controllers can push
+  // targeted events (emergency alerts, doctor acceptance, etc.)
+  socket.join(user_id);
+
+  // Per-socket rate limiting
   let messageCount = 0;
   const MAX_MESSAGES_PER_MINUTE = 60;
 
@@ -322,9 +340,8 @@ io.on("connection", async (socket) => {
     messageCount = 0;
   }, 60_000);
 
-  /**
-   * Join existing conversation
-   */
+  // ── join_conversation ─────────────────────────────────────────────────────
+
   socket.on("join_conversation", async (conversationId) => {
     try {
       if (!conversationId) {
@@ -346,7 +363,9 @@ io.on("connection", async (socket) => {
 
       socket.join(conversation.conversation_id);
 
-      console.log(`User ${user_id} joined conversation ${conversation.conversation_id}`);
+      console.log(
+        `User ${user_id} joined conversation ${conversation.conversation_id}`
+      );
 
       socket.emit("conversation_joined", {
         conversationId: conversation.conversation_id,
@@ -358,18 +377,11 @@ io.on("connection", async (socket) => {
     }
   });
 
+  // ── start_patient_doctor_conversation ────────────────────────────────────
+
   /**
-   * Optional direct event to start Patient <-> Doctor chat
-   *
-   * Patient sends:
-   * {
-   *   doctorUserId: "doctor-user-id"
-   * }
-   *
-   * Doctor sends:
-   * {
-   *   patientUserId: "patient-user-id"
-   * }
+   * Patient sends: { doctorUserId }
+   * Doctor sends:  { patientUserId }
    */
   socket.on("start_patient_doctor_conversation", async (data) => {
     const transaction = await sequelize.transaction();
@@ -381,7 +393,10 @@ io.on("connection", async (socket) => {
 
       if (!isDoctor && !isPatient) {
         await transaction.rollback();
-        socket.emit("error", "Only doctors or patients can start conversations");
+        socket.emit(
+          "error",
+          "Only doctors or patients can start conversations"
+        );
         return;
       }
 
@@ -411,38 +426,21 @@ io.on("connection", async (socket) => {
     } catch (error) {
       await transaction.rollback();
 
-      console.error("Start patient-doctor conversation error:", error.message);
+      console.error(
+        "Start patient-doctor conversation error:",
+        error.message
+      );
       socket.emit("error", error.message || "Failed to start conversation");
     }
   });
 
+  // ── message ───────────────────────────────────────────────────────────────
+
   /**
-   * Send message
-   *
-   * Existing AI chat still works:
-   * {
-   *   message: "Hello AI"
-   * }
-   *
-   * Existing conversation:
-   * {
-   *   conversationId: "conversation-id",
-   *   message: "Hello"
-   * }
-   *
-   * New patient-doctor chat from patient:
-   * {
-   *   conversationType: "patient_doctor",
-   *   doctorUserId: "doctor-user-id",
-   *   message: "Hello doctor"
-   * }
-   *
-   * New patient-doctor chat from doctor:
-   * {
-   *   conversationType: "patient_doctor",
-   *   patientUserId: "patient-user-id",
-   *   message: "Hello patient"
-   * }
+   * Existing AI chat (no conversationId):  { message }
+   * Existing conversation:                 { conversationId, message }
+   * New patient-doctor (patient side):     { conversationType: "patient_doctor", doctorUserId, message }
+   * New patient-doctor (doctor side):      { conversationType: "patient_doctor", patientUserId, message }
    */
   socket.on("message", async (data) => {
     let transaction;
@@ -471,7 +469,10 @@ io.on("connection", async (socket) => {
       const { isDoctor, isPatient } = await getUserProfile(user_id);
 
       if (!isDoctor && !isPatient) {
-        socket.emit("error", "Only doctors or patients can send chat messages");
+        socket.emit(
+          "error",
+          "Only doctors or patients can send chat messages"
+        );
         return;
       }
 
@@ -480,10 +481,7 @@ io.on("connection", async (socket) => {
       let conversation;
       let conversationId = incomingConversationId;
 
-      /**
-       * CASE 1:
-       * Existing conversation
-       */
+      // CASE 1: Existing conversation
       if (conversationId) {
         conversation = await Conversation.findByPk(conversationId, {
           transaction,
@@ -498,10 +496,7 @@ io.on("connection", async (socket) => {
         }
       }
 
-      /**
-       * CASE 2:
-       * New Patient <-> Doctor conversation
-       */
+      // CASE 2: New Patient <-> Doctor conversation
       if (!conversation && conversationType === "patient_doctor") {
         conversation = await getOrCreatePatientDoctorConversation({
           user_id,
@@ -515,10 +510,7 @@ io.on("connection", async (socket) => {
         conversationId = conversation.conversation_id;
       }
 
-      /**
-       * CASE 3:
-       * No conversation supplied, create normal AI conversation
-       */
+      // CASE 3: No conversation supplied — create AI conversation
       if (!conversation) {
         conversation = await Conversation.create(
           {
@@ -534,9 +526,7 @@ io.on("connection", async (socket) => {
         conversationId = conversation.conversation_id;
       }
 
-      /**
-       * Enforce conversation type rules
-       */
+      // Enforce conversation type access rules
       if (
         conversation.type === "patient_ai" &&
         (!isPatient || conversation.patient_user_id !== user_id)
@@ -562,9 +552,7 @@ io.on("connection", async (socket) => {
 
       const senderRole = isPatient ? "patient" : "doctor";
 
-      /**
-       * Save human message
-       */
+      // Save the human message
       const humanMessage = await Message.create(
         {
           message_id: `msg-${crypto.randomUUID()}`,
@@ -581,25 +569,17 @@ io.on("connection", async (socket) => {
       );
 
       await conversation.update(
-        {
-          updated_at: new Date(),
-        },
+        { updated_at: new Date() },
         { transaction }
       );
 
-      /**
-       * Commit human message first.
-       * This ensures real user messages are saved even if AI service fails.
-       */
+      // Commit human message first — real messages are saved even if AI fails
       await transaction.commit();
       transaction = null;
 
       io.to(conversationId).emit("new_message", humanMessage);
 
-      /**
-       * For patient-doctor chat, stop here.
-       * No AI response should be generated.
-       */
+      // Patient-doctor chat: stop here, no AI response
       if (conversation.type === "patient_doctor") {
         io.to(conversationId).emit("message_delivered", {
           conversationId,
@@ -609,11 +589,12 @@ io.on("connection", async (socket) => {
         return;
       }
 
-      /**
-       * AI conversations only:
-       * patient_ai and doctor_ai
-       */
-      if (conversation.type === "patient_ai" || conversation.type === "doctor_ai") {
+      // ── AI conversations (patient_ai / doctor_ai) ─────────────────────────
+
+      if (
+        conversation.type === "patient_ai" ||
+        conversation.type === "doctor_ai"
+      ) {
         io.to(conversationId).emit("typing", { conversationId });
 
         const aiTransaction = await sequelize.transaction();
@@ -624,12 +605,15 @@ io.on("connection", async (socket) => {
             aiTransaction
           );
 
-          const aiResponseText = await callAIService({
+          // callAIService now returns the full AI data object
+          const aiData = await callAIService({
             isPatient,
             user_id,
             message: cleanMessage,
             chat_history: formattedHistory,
           });
+
+          const aiResponseText = aiData.response || "AI service unavailable";
 
           const aiMessage = await Message.create(
             {
@@ -647,9 +631,7 @@ io.on("connection", async (socket) => {
           );
 
           await conversation.update(
-            {
-              updated_at: new Date(),
-            },
+            { updated_at: new Date() },
             { transaction: aiTransaction }
           );
 
@@ -657,6 +639,20 @@ io.on("connection", async (socket) => {
 
           io.to(conversationId).emit("typing_stopped", { conversationId });
           io.to(conversationId).emit("new_message", aiMessage);
+
+          // ── Emergency detection ─────────────────────────────────────────────
+          // Only trigger for patient_ai conversations where the AI flags is_emergency
+          if (aiData.is_emergency === true && isPatient) {
+            const user = await User.findByPk(user_id);
+
+            await handleEmergencyDetected({
+              io,
+              user_id,
+              user,
+              aiData,
+              conversationId,
+            });
+          }
         } catch (error) {
           await aiTransaction.rollback();
 
@@ -675,6 +671,8 @@ io.on("connection", async (socket) => {
       socket.emit("error", error.message || "Failed to process message");
     }
   });
+
+  // ── typing ────────────────────────────────────────────────────────────────
 
   socket.on("typing", async (data) => {
     try {
@@ -706,6 +704,8 @@ io.on("connection", async (socket) => {
     }
   });
 
+  // ── typing_stopped ────────────────────────────────────────────────────────
+
   socket.on("typing_stopped", async (data) => {
     try {
       const { conversationId } = data || {};
@@ -735,6 +735,8 @@ io.on("connection", async (socket) => {
       console.error("Typing stopped event error:", error);
     }
   });
+
+  // ── disconnect ────────────────────────────────────────────────────────────
 
   socket.on("disconnect", () => {
     clearInterval(resetInterval);

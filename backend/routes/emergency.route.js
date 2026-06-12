@@ -1,5 +1,12 @@
 const express = require('express');
-const { triggerEmergency, getEmergencies, updateEmergency } = require('../controllers/emergency.controller');
+const {
+  triggerEmergency,
+  confirmEmergency,
+  declineEmergency,
+  acceptEmergency,
+  getEmergencies,
+  updateEmergency,
+} = require('../controllers/emergency.controller');
 const { authMiddleware } = require('../middleware/authMiddleware');
 const { auditLogger } = require('../middleware/auditLogger');
 
@@ -16,7 +23,7 @@ const router = express.Router();
  * @swagger
  * /api/emergencies:
  *   post:
- *     summary: Trigger an emergency alert
+ *     summary: Trigger a manual emergency alert
  *     tags: [Emergencies]
  *     security:
  *       - bearerAuth: []
@@ -43,6 +50,66 @@ const router = express.Router();
  *         description: Emergency triggered
  */
 router.post('/', authMiddleware, auditLogger('TRIGGER', 'emergency'), triggerEmergency);
+
+/**
+ * @swagger
+ * /api/emergencies/confirm/{case_id}:
+ *   post:
+ *     summary: Patient confirms they want to see a doctor (triggers doctor search)
+ *     tags: [Emergencies]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: case_id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Doctors are being notified
+ */
+router.post('/confirm/:case_id', authMiddleware, confirmEmergency);
+
+/**
+ * @swagger
+ * /api/emergencies/decline/{case_id}:
+ *   post:
+ *     summary: Patient declines to see a doctor (cancels the emergency)
+ *     tags: [Emergencies]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: case_id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Emergency declined
+ */
+router.post('/decline/:case_id', authMiddleware, declineEmergency);
+
+/**
+ * @swagger
+ * /api/emergencies/accept/{case_id}:
+ *   post:
+ *     summary: Doctor accepts an emergency case (first to accept wins)
+ *     tags: [Emergencies]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: case_id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Case accepted, patient-doctor conversation created
+ */
+router.post('/accept/:case_id', authMiddleware, auditLogger('ACCEPT', 'emergency'), acceptEmergency);
 
 /**
  * @swagger

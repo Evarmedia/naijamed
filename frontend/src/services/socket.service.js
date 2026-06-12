@@ -1,6 +1,6 @@
 import { io } from 'socket.io-client';
 
-const BACKEND_URL = 'http://localhost:3005';
+const BACKEND_URL = 'http://localhost:3055';
 
 class SocketService {
   constructor() {
@@ -34,6 +34,41 @@ class SocketService {
       console.error('Socket error:', error);
       this._emit('error', error);
     });
+
+    // ── Emergency events ───────────────────────────────────────────────────
+
+    // AI detected an emergency — fires to the patient's personal socket room
+    this.socket.on('emergency_detected', (data) => {
+      console.log('🚨 Emergency detected via socket:', data);
+      this._emit('emergency_detected', data);
+    });
+
+    // A doctor accepted the emergency case — fires to the patient's personal room
+    this.socket.on('emergency_accepted', (data) => {
+      console.log('✅ Emergency accepted via socket:', data);
+      this._emit('emergency_accepted', data);
+    });
+
+    // Doctor-side: fires to the doctor confirming their acceptance
+    this.socket.on('emergency_case_assigned', (data) => {
+      console.log('📋 Emergency case assigned (doctor view):', data);
+      this._emit('emergency_case_assigned', data);
+    });
+
+    // Doctor-side: a new emergency case is available to accept
+    this.socket.on('new_emergency_case', (data) => {
+      console.log('🆘 New emergency case available:', data);
+      this._emit('new_emergency_case', data);
+    });
+
+    // Typing indicators
+    this.socket.on('typing', (data) => {
+      this._emit('typing', data);
+    });
+
+    this.socket.on('typing_stopped', (data) => {
+      this._emit('typing_stopped', data);
+    });
   }
 
   disconnect() {
@@ -60,7 +95,7 @@ class SocketService {
       this.listeners.set(event, new Set());
     }
     this.listeners.get(event).add(callback);
-    
+
     return () => {
       this.listeners.get(event).delete(callback);
     };
@@ -68,7 +103,7 @@ class SocketService {
 
   _emit(event, data) {
     if (this.listeners.has(event)) {
-      this.listeners.get(event).forEach(callback => callback(data));
+      this.listeners.get(event).forEach((callback) => callback(data));
     }
   }
 

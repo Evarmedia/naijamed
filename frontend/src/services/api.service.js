@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:3005/api';
+const API_BASE_URL = 'http://localhost:3055/api';
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -38,15 +38,25 @@ export const apiService = {
   login: (email, password) => apiClient.post('/auth/login', { email, password }),
   register: (userData) => apiClient.post('/auth/signup', userData),
   verifyOtp: (email, otp) => apiClient.post('/auth/verify-otp', { email, otp }),
-  
+
   // Chat
   getConversations: () => apiClient.get('/chats'),
   initiateConversation: (type) => apiClient.post('/chats/initiate', { type }),
-  getMessages: (conversationId, page = 1, limit = 50) => 
+  getMessages: (conversationId, page = 1, limit = 50) =>
     apiClient.get(`/chats/${conversationId}/messages`, { params: { page, limit } }),
-  sendMessage: (conversationId, message) => 
+  sendMessage: (conversationId, message) =>
     apiClient.post(`/chats/${conversationId}/messages`, { message, message_type: 'text' }),
-    
+
   // AI
   triage: (data) => apiClient.post('/ai/triage', data),
+
+  // Emergency
+  // Patient confirms they want a doctor — triggers batch doctor notifications
+  confirmEmergency: (caseId) => apiClient.post(`/emergencies/confirm/${caseId}`),
+  // Patient declines to see a doctor — cancels the emergency log
+  declineEmergency: (caseId) => apiClient.post(`/emergencies/decline/${caseId}`),
+  // Doctor accepts a case (doctor-side, kept here for completeness)
+  acceptEmergency: (caseId) => apiClient.post(`/emergencies/accept/${caseId}`),
+  // Get emergency history
+  getEmergencies: (params) => apiClient.get('/emergencies', { params }),
 };

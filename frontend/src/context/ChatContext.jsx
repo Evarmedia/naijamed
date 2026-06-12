@@ -5,6 +5,21 @@ import { useAuth } from './AuthContext';
 
 const ChatContext = createContext(null);
 
+// Initial shape for emergencyState
+const INITIAL_EMERGENCY_STATE = {
+  active: false,       // Whether the modal should be visible
+  caseId: null,
+  emergencyId: null,
+  diagnosis: null,
+  treatment: null,
+  conversationId: null,
+  // Modal phase: 'detected' | 'connecting' | 'connected' | null
+  phase: null,
+  // Doctor info once a doctor accepts
+  doctorName: null,
+  doctorConversationId: null,
+};
+
 export const ChatProvider = ({ children }) => {
   const { user } = useAuth();
   const [conversations, setConversations] = useState([]);
@@ -13,6 +28,11 @@ export const ChatProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [mode, setMode] = useState('startup'); // startup, chat, triage
+
+  // Emergency modal state
+  const [emergencyState, setEmergencyState] = useState(INITIAL_EMERGENCY_STATE);
+
+  // ── Conversations ──────────────────────────────────────────────────────────
 
   const loadConversations = useCallback(async () => {
     try {
@@ -64,15 +84,78 @@ export const ChatProvider = ({ children }) => {
 
   const sendMessage = async (content) => {
     if (!currentConversation) return;
-    
-    // Optimistic update would be nice, but socket handles broadcast
-    // So we just send via socket
     socketService.sendMessage(
       currentConversation.conversation_id,
       content,
       currentConversation.type
     );
   };
+
+  // ── Emergency handlers ─────────────────────────────────────────────────────
+
+  /**
+   * Called when patient clicks "Yes, connect me to a doctor".
+   * Hits the confirm endpoint which triggers doctor batch notifications.
+   */
+  const confirmEmergency = async () => {
+    if (!emergencyState.caseId) return;
+
+    setEmergencyState(prev => ({ ...prev, phase: 'connecting' }));
+
+    try {
+      await apiService.confirmEmergency(emergencyState.caseId);
+      // phase stays 'connecting' until we receive emergency_accepted via socket
+    } catch (error) {
+      console.error('Failed to confirm emergency:', error);
+      // Revert to detected phase so the patient can retry
+      setEmergencyState(prev => ({ ...prev, phase: 'detected' }));
+    }
+  };
+
+  /**
+   * Called when patient clicks "No, I'm okay".
+   * Cancels the emergency log on the backend.
+   */
+  const dismissEmergency = async () => {
+    const caseId = emergencyState.caseId;
+    // Reset state immediately for snappy UX
+    setEmergencyState(INITIAL_EMERGENCY_STATE);
+
+    if (caseId) {
+      try {
+        await apiService.declineEmergency(caseId);
+      } catch (error) {
+        console.error('Failed to decline emergency:', error);
+      }
+    }
+  };
+
+  /**
+   * Navigate to the patient-doctor conversation created when a doctor accepts.
+   */
+  const openEmergencyConversation = async () => {
+    const convId = emergencyState.doctorConversationId;
+    if (!convId) return;
+
+    // Reload conversations so the new patient-doctor one appears in the sidebar
+    await loadConversations();
+
+    // Find conversation object in list (or build a minimal one)
+    const found = conversations.find(c => c.conversation_id === convId);
+    if (found) {
+      await selectConversation(found);
+    } else {
+      // If not yet in state, load messages directly and switch mode
+      setCurrentConversation({ conversation_id: convId, type: 'patient_doctor' });
+      setMode('chat');
+      await loadMessages(convId);
+      socketService.joinConversation(convId);
+    }
+
+    setEmergencyState(INITIAL_EMERGENCY_STATE);
+  };
+
+  // ── Socket event subscriptions ─────────────────────────────────────────────
 
   const currentConversationRef = useRef(currentConversation);
 
@@ -87,6 +170,7 @@ export const ChatProvider = ({ children }) => {
     const token = localStorage.getItem('token');
     socketService.connect(token);
 
+    // New chat message
     const handleMessage = (message) => {
       const activeConv = currentConversationRef.current;
       if (activeConv && String(message.conversation_id) === String(activeConv.conversation_id)) {
@@ -97,6 +181,7 @@ export const ChatProvider = ({ children }) => {
       }
     };
 
+    // AI typing indicators
     const handleTyping = (data) => {
       const activeConv = currentConversationRef.current;
       if (activeConv && String(data.conversationId) === String(activeConv.conversation_id)) {
@@ -111,19 +196,51 @@ export const ChatProvider = ({ children }) => {
       }
     };
 
+    // AI detected an emergency → show the modal
+    const handleEmergencyDetected = (data) => {
+      setEmergencyState({
+        active: true,
+        caseId: data.caseId,
+        emergencyId: data.emergencyId,
+        diagnosis: data.diagnosis,
+        treatment: data.treatment,
+        conversationId: data.conversationId,
+        phase: 'detected',
+        doctorName: null,
+        doctorConversationId: null,
+      });
+    };
+
+    // A doctor accepted → update modal to 'connected' state
+    const handleEmergencyAccepted = (data) => {
+      setEmergencyState(prev => ({
+        ...prev,
+        phase: 'connected',
+        doctorName: data.doctorName,
+        doctorConversationId: data.conversationId,
+      }));
+
+      // Refresh conversations so the new patient-doctor one appears in the sidebar
+      loadConversations();
+    };
+
     const unsubscribeMsg = socketService.on('message', handleMessage);
     const unsubscribeTyping = socketService.on('typing', handleTyping);
     const unsubscribeTypingStopped = socketService.on('typing_stopped', handleTypingStopped);
-    
+    const unsubscribeEmergencyDetected = socketService.on('emergency_detected', handleEmergencyDetected);
+    const unsubscribeEmergencyAccepted = socketService.on('emergency_accepted', handleEmergencyAccepted);
+
     return () => {
       unsubscribeMsg();
       unsubscribeTyping();
       unsubscribeTypingStopped();
+      unsubscribeEmergencyDetected();
+      unsubscribeEmergencyAccepted();
       socketService.disconnect();
     };
-  }, [user]); // Only run on mount/auth change
+  }, [user]);
 
-  // This effect handles list refreshing but not socket connection
+  // Refresh conversation list when it's empty after mount
   useEffect(() => {
     if (user && !conversations.length) {
       loadConversations();
@@ -142,7 +259,12 @@ export const ChatProvider = ({ children }) => {
       selectConversation,
       startNewChat,
       sendMessage,
-      refreshConversations: loadConversations
+      refreshConversations: loadConversations,
+      // Emergency
+      emergencyState,
+      confirmEmergency,
+      dismissEmergency,
+      openEmergencyConversation,
     }}>
       {children}
     </ChatContext.Provider>
