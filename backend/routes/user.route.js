@@ -271,10 +271,6 @@ router.get('/doctors', authMiddleware, getAllDoctors);
  *               last_name:
  *                 type: string
  *                 example: Doe
- *               email:
- *                 type: string
- *                 format: email
- *                 example: johndoe@example.com
  *               phone_number:
  *                 type: string
  *                 example: "+2348012345678"
@@ -379,9 +375,6 @@ router.get('/doctors', authMiddleware, getAllDoctors);
  *                         last_name:
  *                           type: string
  *                           example: Doe
- *                         email:
- *                           type: string
- *                           example: johndoe@example.com
  *                         phone_number:
  *                           type: string
  *                           example: "+2348012345678"

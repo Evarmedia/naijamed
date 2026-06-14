@@ -102,7 +102,6 @@ const updatePatientProfile = async (req, res) => {
     const {
       first_name,
       last_name,
-      email,
       phone_number,
       date_of_birth,
       gender,
@@ -262,7 +261,6 @@ const updateDoctorProfile = async (req, res) => {
     const {
       first_name,
       last_name,
-      email,
       phone_number,
       date_of_birth,
       gender,
@@ -296,7 +294,6 @@ const updateDoctorProfile = async (req, res) => {
       {
         first_name,
         last_name,
-        email,
         phone_number,
         date_of_birth,
         gender,

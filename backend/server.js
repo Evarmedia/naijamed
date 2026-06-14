@@ -94,7 +94,7 @@ app.get("/", (req, res) => {
     console.log("Database connected successfully.");
 
     // Sync all models if needed
-    await sequelize.sync({ alter: true });
+    // await sequelize.sync({ alter: true });
 
     console.log("Database synced");
 
