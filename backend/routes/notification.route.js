@@ -1,5 +1,11 @@
 const express = require('express');
-const { getNotifications, createNotificationEndpoint, markAsRead } = require('../controllers/notification.controller');
+const {
+  getNotifications,
+  createNotificationEndpoint,
+  markAsRead,
+  markAllAsRead,
+  clearAllNotifications,
+} = require("../controllers/notification.controller");
 const { authMiddleware } = require('../middleware/authMiddleware');
 
 const router = express.Router();
@@ -13,16 +19,12 @@ const router = express.Router();
 
 /**
  * @swagger
- * /api/notifications/{userId}:
+ * /api/notifications:
  *   get:
  *     summary: Get notifications for user
  *     tags: [Notifications]
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: userId
- *         required: true
  *         schema:
  *           type: string
  *       - in: query
@@ -37,7 +39,7 @@ const router = express.Router();
  *       200:
  *         description: List of notifications
  */
-router.get('/:userId', authMiddleware, getNotifications);
+router.get('/', authMiddleware, getNotifications);
 
 /**
  * @swagger
@@ -78,7 +80,7 @@ router.post('/', authMiddleware, createNotificationEndpoint);
 
 /**
  * @swagger
- * /api/notifications/{notificationId}/read:
+ * /api/notifications/{notification_id}/read:
  *   put:
  *     summary: Mark a notification as read
  *     tags: [Notifications]
@@ -86,7 +88,7 @@ router.post('/', authMiddleware, createNotificationEndpoint);
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
- *         name: notificationId
+ *         name: notification_id
  *         required: true
  *         schema:
  *           type: string
@@ -94,6 +96,34 @@ router.post('/', authMiddleware, createNotificationEndpoint);
  *       200:
  *         description: Marked as read
  */
-router.put('/:notificationId/read', authMiddleware, markAsRead);
+router.put('/:notification_id/read', authMiddleware, markAsRead);
+
+/**
+ * @swagger
+ * /api/notifications/read-all:
+ *   put:
+ *     summary: Mark all notifications as read
+ *     tags: [Notifications]
+ *     security:    
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: All notifications marked as read
+ */
+router.put("/read-all", authMiddleware, markAllAsRead);
+
+/**
+ * @swagger
+ * /api/notifications/clear-all:
+ *   delete:
+ *     summary: Clear all notifications
+ *     tags: [Notifications]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: All notifications cleared
+ */
+router.delete('/clear-all', authMiddleware, clearAllNotifications);
 
 module.exports = router;

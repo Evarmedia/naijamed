@@ -224,6 +224,11 @@ Patients.init(
       allowNull: true,
       defaultValue: null,
     },
+    patient_summary_note: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      defaultValue: null,
+    },
   },
   {
     sequelize,
@@ -295,6 +300,14 @@ Doctors.init(
       type: DataTypes.STRING,
       allowNull: true,
       defaultValue: null,
+    },
+    emergency_cases_completed: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0,
+    },
+    emergency_cases_rejected: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0,
     },
   },
   {

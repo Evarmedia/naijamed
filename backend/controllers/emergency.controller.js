@@ -35,7 +35,7 @@ const triggerEmergency = async (req, res) => {
     // If there's a case, update its classification to emergency
     if (case_id) {
       await Case.update(
-        { triage_classification: "emergency", updated_at: new Date() },
+        { severity: "emergency", updated_at: new Date() },
         { where: { case_id } }
       );
     }
@@ -340,14 +340,14 @@ const getEmergencies = async (req, res) => {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PUT /api/emergencies/:id — update emergency status
+// PUT /api/emergencies/:emergency_id — update emergency status
 // ─────────────────────────────────────────────────────────────────────────────
 const updateEmergency = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { emergency_id } = req.params;
     const { status, responder_notes } = req.body;
 
-    const emergency = await EmergencyLog.findByPk(id);
+    const emergency = await EmergencyLog.findByPk(emergency_id);
     if (!emergency) {
       return res.status(404).json({ message: "Emergency not found" });
     }
@@ -361,7 +361,7 @@ const updateEmergency = async (req, res) => {
     }
     if (responder_notes) updateData.responder_notes = responder_notes;
 
-    await EmergencyLog.update(updateData, { where: { emergency_id: id } });
+    await EmergencyLog.update(updateData, { where: { emergency_id } });
 
     const updated = await EmergencyLog.findByPk(id);
 

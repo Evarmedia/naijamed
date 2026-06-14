@@ -121,7 +121,7 @@ CREATE TABLE cases (
     patient_id TEXT NOT NULL,
     doctor_id TEXT,
     symptoms TEXT,
-    triage_classification TEXT CHECK(triage_classification IN ('mild', 'moderate', 'severe', 'emergency')),
+    severity TEXT CHECK(severity IN ('mild', 'moderate', 'severe', 'emergency')),
     ai_summary TEXT,
     status TEXT CHECK(status IN ('open', 'assigned', 'in_progress', 'closed')) DEFAULT 'open',
     notes TEXT,
@@ -137,6 +137,16 @@ CREATE TABLE prescriptions (
     prescription_id TEXT PRIMARY KEY,
     case_id TEXT NOT NULL,
     doctor_id TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (case_id) REFERENCES cases(case_id) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (doctor_id) REFERENCES doctors(doctor_id) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- Drugs Table
+CREATE TABLE drugs (
+    drug_id TEXT PRIMARY KEY,
+    prescription_id TEXT NOT NULL,
     drug_name TEXT NOT NULL,
     dosage TEXT NOT NULL,
     frequency TEXT NOT NULL,
@@ -144,8 +154,7 @@ CREATE TABLE prescriptions (
     instructions TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (case_id) REFERENCES cases(case_id) ON DELETE CASCADE ON UPDATE CASCADE,
-    FOREIGN KEY (doctor_id) REFERENCES doctors(doctor_id) ON DELETE CASCADE ON UPDATE CASCADE
+    FOREIGN KEY (prescription_id) REFERENCES prescriptions(prescription_id) ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 -- Notifications Table
@@ -201,5 +210,6 @@ CREATE INDEX idx_cases_status ON cases(status);
 CREATE INDEX idx_messages_conversation_id ON messages(conversation_id);
 CREATE INDEX idx_notifications_user_id ON notifications(user_id);
 CREATE INDEX idx_prescriptions_case_id ON prescriptions(case_id);
+CREATE INDEX idx_drugs_prescription_id ON drugs(prescription_id);
 CREATE INDEX idx_emergency_logs_patient_id ON emergency_logs(patient_id);
 CREATE INDEX idx_audit_logs_user_id ON audit_logs(user_id);

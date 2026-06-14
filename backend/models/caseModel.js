@@ -39,7 +39,7 @@ Case.init(
       type: DataTypes.STRING,
       allowNull: true,
       validate: {
-        isIn: [["low", "medium", "high", "critical"]],
+        isIn: [["mild", "moderate", "severe", "emergency"]],
       },
     },
     // Whether in-person physical care is required
@@ -47,13 +47,6 @@ Case.init(
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,
-    },
-    triage_classification: {
-      type: DataTypes.STRING,
-      allowNull: true,
-      validate: {
-        isIn: [["mild", "moderate", "severe", "emergency"]],
-      },
     },
     ai_summary: {
       type: DataTypes.TEXT,

@@ -3,6 +3,7 @@ const { Message } = require("./messagesModel");
 const { Conversation } = require("./conversationModel");
 const { Case } = require("./caseModel");
 const { Prescription } = require("./prescriptionModel");
+const { Drug } = require("./drugModel");
 const { Notification } = require("./notificationModel");
 const { EmergencyLog } = require("./emergencyModel");
 const { AuditLog } = require("./auditLogModel");
@@ -43,6 +44,9 @@ Prescription.belongsTo(Case, { foreignKey: "case_id", as: "case" });
 Doctors.hasMany(Prescription, { foreignKey: "doctor_id", as: "prescriptions" });
 Prescription.belongsTo(Doctors, { foreignKey: "doctor_id", as: "doctor" });
 
+Prescription.hasMany(Drug, { foreignKey: "prescription_id", as: "drugs" });
+Drug.belongsTo(Prescription, { foreignKey: "prescription_id", as: "prescription" });
+
 // ── Notifications ───────────────────────────────────────
 User.hasMany(Notification, { foreignKey: "user_id", as: "notifications" });
 Notification.belongsTo(User, { foreignKey: "user_id", as: "user" });
@@ -66,6 +70,7 @@ module.exports = {
   Conversation,
   Case,
   Prescription,
+  Drug,
   Notification,
   EmergencyLog,
   AuditLog,

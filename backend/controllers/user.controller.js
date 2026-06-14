@@ -1,4 +1,4 @@
-const { User, Patients, Doctors, Case, Prescription } = require("../models/models.js");
+const { User, Patients, Doctors, Case, Prescription, Drug } = require("../models/models.js");
 const { Op } = require("sequelize");
 
 const USER_SAFE_ATTRIBUTES = {
@@ -10,14 +10,34 @@ const USER_SAFE_ATTRIBUTES = {
     "reset_password_token_expiry",
   ],
 };
-
-// GET /patients/:user_id
-const getPatientById = async (req, res) => {
+// [USER]
+// GET /profile
+const getUserProfile = async (req, res) => {
   try {
-    const { user_id } = req.params;
+    const { user_id, role } = req.user;
 
-    const patient = await Patients.findOne({
-      where: { user_id: user_id },
+    const normalizedRole = role?.toLowerCase();
+
+    let ProfileModel;
+    let profileKey;
+    let notFoundMessage;
+
+    if (normalizedRole === "patient") {
+      ProfileModel = Patients;
+      profileKey = "patient";
+      notFoundMessage = "Patient not found";
+    } else if (normalizedRole === "doctor") {
+      ProfileModel = Doctors;
+      profileKey = "doctor";
+      notFoundMessage = "Doctor not found";
+    } else {
+      return res.status(403).json({
+        message: "Access denied. Invalid profile role.",
+      });
+    }
+
+    const profile = await ProfileModel.findOne({
+      where: { user_id },
       include: [
         {
           model: User,
@@ -27,26 +47,57 @@ const getPatientById = async (req, res) => {
       ],
     });
 
-    if (!patient) {
-      return res.status(404).json({ message: "Patient not found" });
+    if (!profile) {
+      return res.status(404).json({ message: notFoundMessage });
     }
 
-    // Role-based access: only the patient themselves or a doctor can view
-    if (req.user.role === "patient" && patient.user_id !== req.user.user_id) {
-      return res.status(403).json({ message: "Access denied" });
-    }
-
-    return res.status(200).json({ patient });
+    return res.status(200).json({
+      [profileKey]: profile,
+    });
   } catch (error) {
-    console.error("Error fetching patient:", error);
+    console.error("Error fetching profile:", error);
     return res.status(500).json({ message: "Internal server error" });
   }
 };
 
-// PUT /patients/:user_id
-const updatePatientProfile = async (req, res) => {
+// GET /api/users/:user_id
+const getUserById = async (req, res) => {
   try {
     const { user_id } = req.params;
+
+    if (!user_id) {
+      return res.status(400).json({
+        message: "User ID is required",
+      });
+    }
+
+    const user = await User.findOne({
+      where: { user_id },
+      attributes: USER_SAFE_ATTRIBUTES,
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found",
+      });
+    }
+
+    return res.status(200).json({
+      message: "User fetched successfully",
+      user,
+    });
+  } catch (error) {
+    console.error("Error fetching user by ID:", error);
+    return res.status(500).json({
+      message: "Internal server error",
+    });
+  }
+};
+
+// PUT /patients/profile
+const updatePatientProfile = async (req, res) => {
+  try {
+    const { user_id } = req.user;
 
     const {
       first_name,
@@ -166,10 +217,10 @@ const updatePatientProfile = async (req, res) => {
   }
 };
 
-// POST /patients/:id/photo
+// POST /patients/photo
 const uploadPatientPhoto = async (req, res) => {
   try {
-    const { user_id } = req.params;
+    const { user_id } = req.user;
 
     const patient = await Patients.findOne({
       where: { user_id },
@@ -177,10 +228,6 @@ const uploadPatientPhoto = async (req, res) => {
 
     if (!patient) {
       return res.status(404).json({ message: "Patient not found" });
-    }
-
-    if (patient.user_id !== req.user.user_id) {
-      return res.status(403).json({ message: "Access denied" });
     }
 
     if (!req.file) {
@@ -207,37 +254,10 @@ const uploadPatientPhoto = async (req, res) => {
   }
 };
 
-// GET /doctors/:user_id
-const getDoctorById = async (req, res) => {
-  try {
-    const { user_id } = req.params;
-
-    const doctor = await Doctors.findOne({
-      where: { user_id },
-      include: [
-        {
-          model: User,
-          as: "user",
-          attributes: USER_SAFE_ATTRIBUTES,
-        },
-      ],
-    });
-
-    if (!doctor) {
-      return res.status(404).json({ message: "Doctor not found" });
-    }
-
-    return res.status(200).json({ doctor });
-  } catch (error) {
-    console.error("Error fetching doctor:", error);
-    return res.status(500).json({ message: "Internal server error" });
-  }
-};
-
-// PUT /doctors/:user_id
+// PUT /doctors/profile
 const updateDoctorProfile = async (req, res) => {
   try {
-    const { user_id } = req.params;
+    const { user_id } = req.user;
 
     const {
       first_name,
@@ -329,10 +349,10 @@ const updateDoctorProfile = async (req, res) => {
   }
 };
 
-// POST /doctors/:user_id/photo
+// POST /doctors/photo
 const uploadDoctorPhoto = async (req, res) => {
   try {
-    const { user_id } = req.params;
+    const { user_id } = req.user;
 
     const doctor = await Doctors.findOne({
       where: { user_id },
@@ -340,10 +360,6 @@ const uploadDoctorPhoto = async (req, res) => {
 
     if (!doctor) {
       return res.status(404).json({ message: "Doctor not found" });
-    }
-
-    if (doctor.user_id !== req.user.user_id) {
-      return res.status(403).json({ message: "Access denied" });
     }
 
     if (!req.file) {
@@ -370,11 +386,11 @@ const uploadDoctorPhoto = async (req, res) => {
   }
 };
 
-// GET /patients/:user_id/history
+// GET /patients/history
 const getPatientHistory = async (req, res) => {
   try {
-    const { user_id } = req.params;
-    const { startDate, endDate, severity } = req.query;
+    const { user_id } = req.user;
+    const { severity, start_date, end_date } = req.query;
 
     const patient = await Patients.findOne({
       where: { user_id },
@@ -392,14 +408,14 @@ const getPatientHistory = async (req, res) => {
       patient_id: patient.patient_id,
     };
 
-    if (startDate && endDate) {
+    if (start_date && end_date) {
       caseWhere.created_at = {
-        [Op.between]: [new Date(startDate), new Date(endDate)],
+        [Op.between]: [start_date, end_date],
       };
     }
 
     if (severity) {
-      caseWhere.triage_classification = severity;
+      caseWhere.severity = severity;
     }
 
     const cases = await Case.findAll({
@@ -419,6 +435,12 @@ const getPatientHistory = async (req, res) => {
         {
           model: Prescription,
           as: "prescriptions",
+          include: [
+            {
+              model: Drug,
+              as: "drugs",
+            },
+          ],
         },
       ],
       order: [["created_at", "DESC"]],
@@ -435,11 +457,11 @@ const getPatientHistory = async (req, res) => {
   }
 };
 
-// GET /doctors/:user_id/caselog
+// GET /doctors/caselog
 const getDoctorCaseLog = async (req, res) => {
   try {
-    const { user_id } = req.params;
-    const { startDate, endDate, severity } = req.query;
+    const { user_id } = req.user;
+    const { start_date, end_date, severity } = req.query;
 
     const doctor = await Doctors.findOne({
       where: { user_id },
@@ -449,7 +471,7 @@ const getDoctorCaseLog = async (req, res) => {
       return res.status(404).json({ message: "Doctor not found" });
     }
 
-    if (req.user.role === "doctor" && doctor.user_id !== req.user.user_id) {
+    if (req.user.role !== "doctor") {
       return res.status(403).json({ message: "Access denied" });
     }
 
@@ -457,14 +479,14 @@ const getDoctorCaseLog = async (req, res) => {
       doctor_id: doctor.doctor_id,
     };
 
-    if (startDate && endDate) {
+    if (start_date && end_date) {
       caseWhere.created_at = {
-        [Op.between]: [new Date(startDate), new Date(endDate)],
+        [Op.between]: [start_date, end_date],
       };
     }
 
     if (severity) {
-      caseWhere.triage_classification = severity;
+      caseWhere.severity = severity;
     }
 
     const cases = await Case.findAll({
@@ -477,13 +499,19 @@ const getDoctorCaseLog = async (req, res) => {
             {
               model: User,
               as: "user",
-              attributes: ["user_id", "first_name", "last_name"],
+              // attributes: ["user_id", "first_name", "last_name"],
             },
           ],
         },
         {
           model: Prescription,
           as: "prescriptions",
+          include: [
+            {
+              model: Drug,
+              as: "drugs",
+            },
+          ],
         },
       ],
       order: [["created_at", "DESC"]],
@@ -520,13 +548,13 @@ const getAllDoctors = async (req, res) => {
 };
 
 module.exports = {
-  getPatientById,
+  getUserProfile,
   updatePatientProfile,
   uploadPatientPhoto,
-  getDoctorById,
   updateDoctorProfile,
   uploadDoctorPhoto,
   getPatientHistory,
   getDoctorCaseLog,
   getAllDoctors,
+  getUserById,
 };

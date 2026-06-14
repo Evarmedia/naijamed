@@ -157,7 +157,7 @@ router.get('/', authMiddleware, getEmergencies);
 
 /**
  * @swagger
- * /api/emergencies/{id}:
+ * /api/emergencies/{emergency_id}:
  *   put:
  *     summary: Update emergency status
  *     tags: [Emergencies]
@@ -165,7 +165,7 @@ router.get('/', authMiddleware, getEmergencies);
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
- *         name: id
+ *         name: emergency_id
  *         required: true
  *         schema:
  *           type: string
@@ -185,6 +185,6 @@ router.get('/', authMiddleware, getEmergencies);
  *       200:
  *         description: Emergency updated
  */
-router.put('/:id', authMiddleware, auditLogger('UPDATE', 'emergency'), updateEmergency);
+router.put('/:emergency_id', authMiddleware, auditLogger('UPDATE', 'emergency'), updateEmergency);
 
 module.exports = router;

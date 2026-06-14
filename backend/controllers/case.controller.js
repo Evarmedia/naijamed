@@ -5,7 +5,7 @@ const { Op } = require("sequelize");
 // POST /cases — create a new case
 const createCase = async (req, res) => {
   try {
-    const { patient_user_id, symptoms, triage_classification, ai_summary, doctor_user_id, notes } = req.body;
+    const { patient_user_id, symptoms, severity, ai_summary, doctor_user_id, notes } = req.body;
 
     if (!patient_user_id) {
       return res.status(400).json({ message: "patient_id is required" });
@@ -20,7 +20,7 @@ const createCase = async (req, res) => {
       patient_user_id,
       doctor_user_id: doctor_user_id || null,
       symptoms,
-      triage_classification: triage_classification || null,
+      severity: severity || null,
       ai_summary: ai_summary || null,
       notes: notes || null,
       status: doctor_user_id ? "assigned" : "open",
@@ -34,7 +34,7 @@ const createCase = async (req, res) => {
           doctor.user_id,
           "case_assigned",
           "New Case Assigned",
-          `A new ${triage_classification || "unclassified"} case has been assigned to you.`,
+          `A new ${severity || "unclassified"} case has been assigned to you.`,
           newCase.case_id
         );
       }
@@ -50,12 +50,12 @@ const createCase = async (req, res) => {
   }
 };
 
-// GET /cases/:id
+// GET /cases/:case_id
 const getCaseById = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { case_id } = req.params;
 
-    const caseRecord = await Case.findByPk(id, {
+    const caseRecord = await Case.findByPk(case_id, {
       include: [
         {
           model: Patients,
@@ -81,13 +81,13 @@ const getCaseById = async (req, res) => {
   }
 };
 
-// PUT /cases/:id — update case (assign doctor, change status, add notes)
+// PUT /cases/:case_id — update case (assign doctor, change status, add notes)
 const updateCase = async (req, res) => {
   try {
-    const { id } = req.params;
-    const { doctor_id, status, notes, triage_classification, ai_summary } = req.body;
+    const { case_id } = req.params;
+    const { doctor_id, status, notes, severity, ai_summary } = req.body;
 
-    const caseRecord = await Case.findByPk(id);
+    const caseRecord = await Case.findByPk(case_id);
     if (!caseRecord) {
       return res.status(404).json({ message: "Case not found" });
     }
@@ -120,12 +120,12 @@ const updateCase = async (req, res) => {
     }
 
     if (notes !== undefined) updateData.notes = notes;
-    if (triage_classification !== undefined) updateData.triage_classification = triage_classification;
+    if (severity !== undefined) updateData.severity = severity;
     if (ai_summary !== undefined) updateData.ai_summary = ai_summary;
 
-    await Case.update(updateData, { where: { case_id: id } });
+    await Case.update(updateData, { where: { case_id } });
 
-    const updatedCase = await Case.findByPk(id, {
+    const updatedCase = await Case.findByPk(case_id, {
       include: [
         {
           model: Patients,
@@ -153,13 +153,14 @@ const updateCase = async (req, res) => {
 // GET /cases — list cases with filters
 const listCases = async (req, res) => {
   try {
-    const { doctorId, patientId, status, severity, page = 1, limit = 20 } = req.query;
+    const { doctor_id, patient_id, status, severity, created_at, page = 1, limit = 20 } = req.query;
 
     const where = {};
-    if (doctorId) where.doctor_id = doctorId;
-    if (patientId) where.patient_id = patientId;
+    if (doctor_id) where.doctor_id = doctor_id;
+    if (patient_id) where.patient_id = patient_id;
     if (status) where.status = status;
-    if (severity) where.triage_classification = severity;
+    if (severity) where.severity = severity;
+    if (created_at) where.created_at = created_at;
 
     const offset = (parseInt(page) - 1) * parseInt(limit);
 
@@ -181,7 +182,7 @@ const listCases = async (req, res) => {
         // Sort by severity: emergency > severe > moderate > mild
         [
           require("sequelize").literal(
-            `CASE triage_classification 
+            `CASE severity 
               WHEN 'emergency' THEN 1 
               WHEN 'severe' THEN 2 
               WHEN 'moderate' THEN 3 

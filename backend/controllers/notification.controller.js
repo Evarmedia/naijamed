@@ -1,18 +1,13 @@
 const { Notification } = require("../models/models");
 
-// GET /notifications/:userId
+// GET /notifications/
 const getNotifications = async (req, res) => {
   try {
-    const { userId } = req.params;
+    const user_id = req.user.user_id;
     const { unreadOnly, type, page = 1, limit = 20 } = req.query;
 
-    // Only the user themselves can view their notifications
-    if (req.user.user_id !== userId) {
-      return res.status(403).json({ message: "Access denied" });
-    }
-
-    const where = { user_id: userId };
-    if (unreadOnly === "true") {
+    const where = { user_id };
+    if (unreadOnly === true) {
       where.is_read = false;
     }
     if (type) {
@@ -72,12 +67,12 @@ const createNotificationEndpoint = async (req, res) => {
   }
 };
 
-// PUT /notifications/:notificationId/read — mark as read
+// PUT /notifications/:notification_id/read — mark as read
 const markAsRead = async (req, res) => {
   try {
-    const { notificationId } = req.params;
+    const { notification_id } = req.params;
 
-    const notification = await Notification.findByPk(notificationId);
+    const notification = await Notification.findByPk(notification_id);
     if (!notification) {
       return res.status(404).json({ message: "Notification not found" });
     }
@@ -98,8 +93,49 @@ const markAsRead = async (req, res) => {
   }
 };
 
+// PUT /notifications/read-all — mark all as read
+const markAllAsRead = async (req, res) => {
+  try {
+    const user_id = req.user.user_id;
+
+    const notification = await Notification.update(
+      { is_read: true },
+      { where: { user_id } }
+    );
+
+    return res.status(200).json({
+      message: "All notifications marked as read",
+      notification,
+    });
+  } catch (error) {
+    console.error("Error marking all notifications as read:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+// DELETE /notifications/clear-all — clear all notifications
+const clearAllNotifications = async (req, res) => {
+  try {
+    const user_id = req.user.user_id;
+
+    const notification = await Notification.destroy({
+      where: { user_id },
+    });
+
+    return res.status(200).json({
+      message: "All notifications cleared",
+      notification,
+    });
+  } catch (error) {
+    console.error("Error clearing all notifications:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
 module.exports = {
   getNotifications,
   createNotificationEndpoint,
   markAsRead,
+  markAllAsRead,
+  clearAllNotifications,
 };

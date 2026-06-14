@@ -2,22 +2,38 @@ const { Model, DataTypes } = require("sequelize");
 const sequelize = require("../config/db");
 const crypto = require("crypto");
 
-class Prescription extends Model {}
-Prescription.init(
+class Drug extends Model {}
+Drug.init(
   {
-    prescription_id: {
+    drug_id: {
       type: DataTypes.STRING,
       primaryKey: true,
       allowNull: false,
-      defaultValue: () => `rx-${crypto.randomUUID()}`,
+      defaultValue: () => `drug-${crypto.randomUUID()}`,
     },
-    case_id: {
+    prescription_id: {
       type: DataTypes.STRING,
       allowNull: false,
     },
-    doctor_id: {
+    drug_name: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    dosage: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    frequency: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    duration: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    instructions: {
+      type: DataTypes.TEXT,
+      allowNull: true,
     },
     created_at: {
       type: DataTypes.DATE,
@@ -30,10 +46,10 @@ Prescription.init(
   },
   {
     sequelize,
-    modelName: "Prescription",
-    tableName: "prescriptions",
+    modelName: "Drug",
+    tableName: "drugs",
     timestamps: false,
   }
 );
 
-module.exports = { Prescription };
+module.exports = { Drug };

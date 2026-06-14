@@ -35,7 +35,7 @@ const router = express.Router();
  *               symptoms:
  *                 type: string
  *                 example: "Severe headache"
- *               triage_classification:
+ *               severity:
  *                 type: string
  *                 enum: [mild, moderate, severe, emergency]
  *                 example: severe
@@ -92,7 +92,7 @@ router.get('/', authMiddleware, listCases);
 
 /**
  * @swagger
- * /api/cases/{id}:
+ * /api/cases/{case_id}:
  *   get:
  *     summary: Get a specific case
  *     tags: [Cases]
@@ -100,7 +100,7 @@ router.get('/', authMiddleware, listCases);
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
- *         name: id
+ *         name: case_id
  *         required: true
  *         schema:
  *           type: string
@@ -108,11 +108,11 @@ router.get('/', authMiddleware, listCases);
  *       200:
  *         description: Case details
  */
-router.get('/:id', authMiddleware, getCaseById);
+router.get('/:case_id', authMiddleware, getCaseById);
 
 /**
  * @swagger
- * /api/cases/{id}:
+ * /api/cases/{case_id}:
  *   put:
  *     summary: Update a case (assign doctor, change status, add notes)
  *     tags: [Cases]
@@ -120,7 +120,7 @@ router.get('/:id', authMiddleware, getCaseById);
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
- *         name: id
+ *         name: case_id
  *         required: true
  *         schema:
  *           type: string
@@ -138,12 +138,12 @@ router.get('/:id', authMiddleware, getCaseById);
  *                 enum: [open, assigned, in_progress, closed]
  *               notes:
  *                 type: string
- *               triage_classification:
+ *               severity:
  *                 type: string
  *     responses:
  *       200:
  *         description: Case updated successfully
  */
-router.put('/:id', authMiddleware, auditLogger('UPDATE', 'case'), updateCase);
+router.put('/:case_id', authMiddleware, auditLogger('UPDATE', 'case'), updateCase);
 
 module.exports = router;
